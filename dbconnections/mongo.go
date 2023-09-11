@@ -10,8 +10,7 @@ import (
 
 type MongoConnection struct {
 	DBCommon
-	currentDB string
-	client    *mongo.Client
+	client *mongo.Client
 }
 
 //TODO: add the communication with certificate
@@ -79,7 +78,7 @@ func (mc *MongoConnection) Connect(uri string) error {
 
 func (mc *MongoConnection) Insert(data interface{}) error {
 
-	precreatedata, err := mc.PreInsert(data)
+	precreatedata, err := mc.preInsert(data)
 
 	if err != nil {
 		return err
@@ -88,7 +87,7 @@ func (mc *MongoConnection) Insert(data interface{}) error {
 	_, err = mc.client.Database(mc.currentDB).Collection(precreatedata.EntityName).InsertOne(context.TODO(), data)
 
 	if err == nil {
-		err = mc.PostInsert(mc.cache, precreatedata.Data, precreatedata.mData, mc.currentDB, precreatedata.EntityName)
+		err = mc.postInsert(mc.cache, precreatedata.Data, precreatedata.mData, mc.currentDB, precreatedata.EntityName)
 	}
 	return err
 }
@@ -102,11 +101,6 @@ func (mc *MongoConnection) Update(interface{}) error {
 }
 
 func (mc *MongoConnection) Delete(interface{}) error {
-	return nil
-}
-
-func (mc *MongoConnection) ChangeDatabase(dbName string) error {
-	mc.currentDB = dbName
 	return nil
 }
 

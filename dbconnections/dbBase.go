@@ -13,6 +13,7 @@ type PreCreateReturn struct {
 type DBBase interface {
 	ChangeDatabase(dbName string) error
 	SetCache(*caches.Cache)
-	PreInsert(data interface{}) (entityName PreCreateReturn, err error)
-	PostInsert(cache *caches.Cache, data interface{}, mData map[string]interface{}, dbName string, entityName string) error
+	preInsert(data interface{}) (entityName PreCreateReturn, err error)
+	postInsert(cache *caches.Cache, data interface{}, mData map[string]interface{}, dbName string, entityName string) error
+	CreateTable(ifNotExist bool)
 }

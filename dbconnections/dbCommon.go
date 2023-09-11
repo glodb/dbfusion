@@ -24,7 +24,7 @@ func (dbc *DBCommon) ChangeDatabase(dbName string) error {
 	return nil
 }
 
-func (dbc *DBCommon) PreInsert(data interface{}) (precreateData PreCreateReturn, err error) {
+func (dbc *DBCommon) preInsert(data interface{}) (precreateData PreCreateReturn, err error) {
 	dataValue := reflect.ValueOf(data)
 	dataType := dataValue.Type()
 
@@ -90,7 +90,7 @@ func (dbc *DBCommon) PreInsert(data interface{}) (precreateData PreCreateReturn,
 	return
 }
 
-func (dbc *DBCommon) PostInsert(cache *caches.Cache, data interface{}, mData map[string]interface{}, dbName string, entityName string) error {
+func (dbc *DBCommon) postInsert(cache *caches.Cache, data interface{}, mData map[string]interface{}, dbName string, entityName string) error {
 	if val, ok := interface{}(data).(hooks.CacheHook); ok {
 		if cache != nil {
 			caches.GetInstance().ProcessInsertCache(*cache, val.GetCacheIndexes(), mData, dbName, entityName)

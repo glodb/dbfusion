@@ -32,7 +32,7 @@ func (ms *MySql) Connect(uri string) error {
 }
 
 func (ms *MySql) Insert(data interface{}) error {
-	preinsertdata, err := ms.PreInsert(data)
+	preinsertdata, err := ms.preInsert(data)
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func (ms *MySql) Insert(data interface{}) error {
 	_, err = ms.db.Exec(query, values...)
 
 	if err == nil {
-		err = ms.PostInsert(ms.cache, preinsertdata.Data, preinsertdata.mData, ms.currentDB, preinsertdata.EntityName)
+		err = ms.postInsert(ms.cache, preinsertdata.Data, preinsertdata.mData, ms.currentDB, preinsertdata.EntityName)
 	}
 	return err
 }
@@ -72,11 +72,6 @@ func (ms *MySql) Update(interface{}) error {
 
 func (ms *MySql) Delete(interface{}) error {
 	return nil
-}
-
-func (ms *MySql) ChangeDatabase(dbName string) error {
-	return nil
-
 }
 
 func (ms *MySql) DisConnect() {

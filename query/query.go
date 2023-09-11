@@ -3,8 +3,6 @@ package query
 // Define an interface for query operations.
 type Query interface {
 	CRUD
-
-	CreateTable(ifNotExist bool)
 	// AddCompositeCacheIndex()
 	// AddCompositeIndex()
 	Filter(QMap)
