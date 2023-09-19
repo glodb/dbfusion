@@ -4,32 +4,34 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/glodb/dbfusion/dbconnections"
+	"github.com/glodb/dbfusion/connections"
 	"github.com/glodb/dbfusion/dbfusionErrors"
+	"github.com/glodb/dbfusion/ftypes"
+	"github.com/glodb/dbfusion/implementations"
 )
 
 // Factory represents the singleton factory.
-type Connections struct {
+type connectionsFactory struct {
 	// Add fields and methods relevant to your factory here.
-	connections map[dbconnections.DBTypes]dbconnections.DBConnections
+	connections map[ftypes.DBTypes]connections.Connection
 }
 
 var (
-	instance *Connections
+	instance *connectionsFactory
 	once     sync.Once
 )
 
 // GetInstance returns a singleton instance of the Factory.
-func GetInstance() *Connections {
+func GetInstance() *connectionsFactory {
 	once.Do(func() {
-		instance = &Connections{}
+		instance = &connectionsFactory{}
 	})
 	return instance
 }
 
 // Supports multiple DB Types
-func (c *Connections) GetConnection(option Options) (connection dbconnections.DBConnections, err error) {
-	if con, ok := c.connections[option.DbType]; ok {
+func (c *connectionsFactory) getConnection(option Options, dbType ftypes.DBTypes) (connection connections.Connection, err error) {
+	if con, ok := c.connections[dbType]; ok {
 		connection = con
 		return
 	}
@@ -37,11 +39,11 @@ func (c *Connections) GetConnection(option Options) (connection dbconnections.DB
 	if option.Uri == nil {
 		return nil, dbfusionErrors.ErrUriRequiredForConnection
 	}
-	switch option.DbType {
-	case dbconnections.MONGO:
-		connection = &dbconnections.MongoConnection{}
-	case dbconnections.MYSQL:
-		connection = &dbconnections.MySql{}
+	switch dbType {
+	case connections.MONGO:
+		connection = &implementations.MongoConnection{}
+	case connections.MYSQL:
+		connection = &implementations.MySql{}
 	}
 
 	if option.CertificatePath != nil {
@@ -75,8 +77,25 @@ func (c *Connections) GetConnection(option Options) (connection dbconnections.DB
 
 	return
 }
+func (c *connectionsFactory) GetMySqlConnection(option Options) (connection connections.SQLConnection, err error) {
+	con, err := c.getConnection(option, connections.MYSQL)
 
-func (c *Connections) CloseConnection(dbType dbconnections.DBTypes) error {
+	if err != nil {
+		return nil, err
+	}
+	return con.(connections.SQLConnection), nil
+}
+
+func (c *connectionsFactory) GeMongoConnection(option Options) (connection connections.MongoConnection, err error) {
+	con, err := c.getConnection(option, connections.MONGO)
+
+	if err != nil {
+		return nil, err
+	}
+	return con.(connections.MongoConnection), nil
+}
+
+func (c *connectionsFactory) CloseConnection(dbType ftypes.DBTypes) error {
 	if con, ok := c.connections[dbType]; ok {
 		con.DisConnect()
 		return nil
@@ -84,7 +103,7 @@ func (c *Connections) CloseConnection(dbType dbconnections.DBTypes) error {
 	return dbfusionErrors.ErrConnectionNotAvailable
 }
 
-func (c *Connections) CloseAllConnections() {
+func (c *connectionsFactory) CloseAllConnections() {
 	for _, value := range c.connections {
 		value.DisConnect()
 	}

@@ -14,4 +14,6 @@ var (
 	ErrEntityNameRequired       = errors.New("In case of map[string]interface entity name is required")
 	ErrNoValidCacheFound        = errors.New("No valid cache is found to process this hook")
 	ErrSQLQueryTypeNotSupported = errors.New("Map or built in types are supported for query")
+	ErrSQLQueryNoRecordFound    = errors.New("No Record found in sql query")
+	ErrInvalidType              = errors.New("This type is not supported by the library yet")
 )

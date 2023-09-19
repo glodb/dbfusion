@@ -1,4 +1,4 @@
-package dbconnections
+package implementations
 
 import (
 	"reflect"
@@ -13,15 +13,19 @@ import (
 )
 
 type DBCommon struct {
-	cache      *caches.Cache
-	currentDB  string
-	tableName  string
-	whereQuery interface{}
-	skip       int64
-	limit      int64
-	projection interface{}
-	sort       interface{}
-	joins      string
+	cache        *caches.Cache
+	currentDB    string
+	tableName    string
+	whereQuery   interface{}
+	skip         int64
+	limit        int64
+	projection   interface{}
+	sort         interface{}
+	joins        string
+	groupBy      string
+	havingString string
+	havingValues []interface{}
+	orderBy      string
 }
 
 func (dbc *DBCommon) SetCache(cache *caches.Cache) {
@@ -219,13 +223,13 @@ func (dbc *DBCommon) preFind(cache *caches.Cache, result interface{}, dbFusionOp
 	}
 
 	prefindReturn.entityName = nameData.entityName
+	prefindReturn.dataValue = nameData.dataValue
+	prefindReturn.dataType = nameData.dataType
 
 	var dbFusionData conditions.DBFusionData
+
 	if value, ok := dbc.whereQuery.(conditions.DBFusionData); !ok {
-		prefindReturn.query = dbc.whereQuery
-		prefindReturn.whereQuery = dbc.whereQuery
-		prefindReturn.queryDatabase = true
-		return
+		return prefindReturn, dbfusionErrors.ErrInvalidType
 	} else {
 		dbFusionData = value
 	}
@@ -236,18 +240,16 @@ func (dbc *DBCommon) preFind(cache *caches.Cache, result interface{}, dbFusionOp
 		prefindReturn.queryDatabase = true
 	} else {
 		ok := false
-		redisKey := dbc.currentDB + "_" + prefindReturn.entityName + dbFusionData.GetCacheValues()
-		if dbFusionData.ShouldQueryDefaultCache() {
-			ok, err = caches.GetInstance().ProceessGetCache(*cache, redisKey, result)
+		redisKey := dbc.currentDB + "_" + prefindReturn.entityName + "_" + dbFusionData.GetCacheValues()
+		ok, err = caches.GetInstance().ProceessGetCache(*cache, redisKey, result)
 
-			if err != nil {
-				return
-			}
+		if err != nil {
+			return
 		}
 		skipDB := false
 
 		if !ok { //Data is not found in the redis composite index try to find if this result exists
-			redisQueryKey := dbc.currentDB + "_" + prefindReturn.entityName + dbFusionData.GetCacheKey()
+			redisQueryKey := dbc.currentDB + "_" + prefindReturn.entityName + "_" + dbFusionData.GetCacheKey()
 			skipDB, err = caches.GetInstance().ProceessGetQueryCache(*cache, redisQueryKey, result)
 			if err != nil {
 				return
@@ -274,8 +276,8 @@ func (dbc *DBCommon) postFind(cache *caches.Cache, result interface{}, entityNam
 	}
 
 	if options.CacheResult { //User Asked us to cache the results of this query
-		if value, ok := dbc.whereQuery.(conditions.DBFusionData); ok { //Caching is only possible if it is of type DBFusionData
-			redisQueryKey := dbc.currentDB + "_" + entityName + value.GetCacheKey()
+		if value, ok := dbc.whereQuery.(conditions.DBFusionData); ok { //Caching is only possible if it is of type dbFusionData
+			redisQueryKey := dbc.currentDB + "_" + entityName + "_" + value.GetCacheKey()
 			caches.GetInstance().ProceessSetQueryCache(*cache, redisQueryKey, result)
 		}
 	}
@@ -284,4 +286,18 @@ func (dbc *DBCommon) postFind(cache *caches.Cache, result interface{}, entityNam
 		dbc.whereQuery = value.PostFind()
 	}
 	return nil
+}
+
+func (dbc *DBCommon) refreshValues() {
+	dbc.tableName = ""
+	dbc.whereQuery = nil
+	dbc.skip = 0
+	dbc.limit = 0
+	dbc.projection = nil
+	dbc.sort = nil
+	dbc.joins = ""
+	dbc.groupBy = ""
+	dbc.havingString = ""
+	dbc.havingValues = make([]interface{}, 0)
+	dbc.orderBy = ""
 }

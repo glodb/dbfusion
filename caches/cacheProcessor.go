@@ -14,27 +14,38 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-type CacheProcessor struct {
-	semaphore *semaphore.Weighted
-	entropy   *ulid.MonotonicEntropy
+// cacheProcessor is a singleton structure that handles all cache-related operations for composite and single indexes.
+type cacheProcessor struct {
+	semaphore *semaphore.Weighted    // Semaphore for controlling parallel cache operations.
+	entropy   *ulid.MonotonicEntropy // Entropy source for ULID generation.
 }
 
 var (
-	instance *CacheProcessor
+	instance *cacheProcessor
 	once     sync.Once
 )
 
-// GetInstance returns a singleton instance of the Factory.
-func GetInstance() *CacheProcessor {
+// GetInstance returns a singleton instance of the cache processor.
+func GetInstance() *cacheProcessor {
 	once.Do(func() {
-		instance = &CacheProcessor{}
+		instance = &cacheProcessor{}
 		instance.semaphore = semaphore.NewWeighted(int64(CACHE_PARALLEL_PROCESS))
 		instance.entropy = ulid.Monotonic(rand.Reader, 0)
 	})
 	return instance
 }
 
-func (cp *CacheProcessor) ProcessInsertCache(cache Cache, indexes []string, data map[string]interface{}, dbName string, entityName string) (err error) {
+// ProcessInsertCache processes the insertion of data into the cache for composite and single indexes.
+// It generates composite indexes based on unique keys and stores data with ULID keys in the cache.
+// Parameters:
+//   - cache (Cache): The cache implementation to use.
+//   - indexes ([]string): List of composite indexes to create.
+//   - data (map[string]interface{}): The data to be cached.
+//   - dbName (string): The name of the database.
+//   - entityName (string): The name of the entity.
+// Returns:
+//   - error: An error if the cache operation encounters issues.
+func (cp *cacheProcessor) ProcessInsertCache(cache Cache, indexes []string, data map[string]interface{}, dbName string, entityName string) (err error) {
 	if len(indexes) > 10 {
 		return dbfusionErrors.ErrCacheIndexesIncreased
 	}
@@ -59,7 +70,7 @@ func (cp *CacheProcessor) ProcessInsertCache(cache Cache, indexes []string, data
 				err = dbfusionErrors.ErrCacheUniqueKeysIncreased
 			}
 
-			index := dbName + "_" + entityName + "_"
+			index := dbName + "_" + entityName + "_" // Add dbName and entityName
 			for _, key := range uniqueKeys {
 
 				if value, ok := data[key]; ok {
@@ -81,7 +92,14 @@ func (cp *CacheProcessor) ProcessInsertCache(cache Cache, indexes []string, data
 	return err
 }
 
-func (cp *CacheProcessor) processIndexes(cache Cache, cacheIndexes []string, data map[string]interface{}) error {
+// processIndexes is a helper function that takes preprocessed indexes and creates the second index and stores data in the cache.
+// Parameters:
+//   - cache (Cache): The cache implementation to use.
+//   - cacheIndexes ([]string): List of composite indexes to create.
+//   - data (map[string]interface{}): The data to be cached.
+// Returns:
+//   - error: An error if the cache operation encounters issues.
+func (cp *cacheProcessor) processIndexes(cache Cache, cacheIndexes []string, data map[string]interface{}) error {
 	ulid := ulid.MustNew(ulid.Timestamp(time.Now()), cp.entropy).String()
 	for _, index := range cacheIndexes {
 		err := cache.SetKey(index, ulid)
@@ -101,7 +119,15 @@ func (cp *CacheProcessor) processIndexes(cache Cache, cacheIndexes []string, dat
 	return nil
 }
 
-func (cp *CacheProcessor) ProceessGetCache(cache Cache, key string, data interface{}) (bool, error) {
+// ProceessGetCache retrieves data from the composite index in the cache and decodes it into the provided data variable.
+// Parameters:
+//   - cache (Cache): The cache implementation to use.
+//   - key (string): The key to retrieve data from the cache.
+//   - data (interface{}): A reference to the variable where the retrieved data will be decoded.
+// Returns:
+//   - bool: `true` if data is found and retrieved successfully; otherwise, `false`.
+//   - error: An error if the cache operation encounters issues.
+func (cp *cacheProcessor) ProceessGetCache(cache Cache, key string, data interface{}) (bool, error) {
 	firstKey, err := cache.GetKey(key)
 	if err != nil {
 		return false, err
@@ -122,7 +148,15 @@ func (cp *CacheProcessor) ProceessGetCache(cache Cache, key string, data interfa
 	return true, nil
 }
 
-func (cp *CacheProcessor) ProceessGetQueryCache(cache Cache, key string, data interface{}) (bool, error) {
+// ProceessGetQueryCache retrieves data from the cache using a single key and decodes it into the provided data variable.
+// Parameters:
+//   - cache (Cache): The cache implementation to use.
+//   - key (string): The key to retrieve data from the cache.
+//   - data (interface{}): A reference to the variable where the retrieved data will be decoded.
+// Returns:
+//   - bool: `true` if data is found and retrieved successfully; otherwise, `false`.
+//   - error: An error if the cache operation encounters issues.
+func (cp *cacheProcessor) ProceessGetQueryCache(cache Cache, key string, data interface{}) (bool, error) {
 	redisData, err := cache.GetKey(key)
 
 	if err != nil {
@@ -137,7 +171,15 @@ func (cp *CacheProcessor) ProceessGetQueryCache(cache Cache, key string, data in
 	return true, nil
 }
 
-func (cp *CacheProcessor) ProceessSetQueryCache(cache Cache, key string, data interface{}) (bool, error) {
+// ProceessSetQueryCache stores data in the cache using a single key.
+// Parameters:
+//   - cache (Cache): The cache implementation to use.
+//   - key (string): The key to store data in the cache.
+//   - data (interface{}): The data to be stored.
+// Returns:
+//   - bool: `true` if data is stored successfully; otherwise, `false`.
+//   - error: An error if the cache operation encounters issues.
+func (cp *cacheProcessor) ProceessSetQueryCache(cache Cache, key string, data interface{}) (bool, error) {
 	encodedData, err := codec.GetInstance().Encode(data)
 	if err != nil {
 		return false, err

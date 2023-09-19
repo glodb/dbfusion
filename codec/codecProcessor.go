@@ -5,31 +5,31 @@ import (
 	"sync"
 )
 
-type CodecProcessor struct {
+type codecProcessor struct {
 }
 
 var (
-	instance *CodecProcessor
+	instance *codecProcessor
 	once     sync.Once
 )
 
 // GetInstance returns a singleton instance of the Factory.
-func GetInstance() *CodecProcessor {
+func GetInstance() *codecProcessor {
 	once.Do(func() {
-		instance = &CodecProcessor{}
+		instance = &codecProcessor{}
 
 	})
 	return instance
 }
 
-func (cp *CodecProcessor) Encode(data interface{}) ([]byte, error) {
+func (cp *codecProcessor) Encode(data interface{}) ([]byte, error) {
 
 	encodedData, err := json.Marshal(data)
 
 	return encodedData, err
 }
 
-func (cp *CodecProcessor) Decode(encodedData []byte, v any) error {
+func (cp *codecProcessor) Decode(encodedData []byte, v any) error {
 
 	err := json.Unmarshal(encodedData, v)
 	return err

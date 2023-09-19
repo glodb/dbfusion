@@ -1,10 +1,6 @@
-package dbconnections
+package implementations
 
-import (
-	"reflect"
-
-	"github.com/glodb/dbfusion/caches"
-)
+import "reflect"
 
 type entityData struct {
 	entityName string
@@ -27,10 +23,6 @@ type preFindReturn struct {
 	query         interface{}
 	whereQuery    interface{}
 	queryDatabase bool
-}
-
-type DBBase interface {
-	ChangeDatabase(dbName string) error
-	SetCache(*caches.Cache)
-	CreateTable(ifNotExist bool)
+	dataType      reflect.Type
+	dataValue     reflect.Value
 }

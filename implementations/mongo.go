@@ -1,19 +1,19 @@
-package dbconnections
+package implementations
 
 import (
 	"context"
 
 	"github.com/glodb/dbfusion/conditions"
-	"github.com/glodb/dbfusion/joins"
-	"github.com/glodb/dbfusion/query"
+	"github.com/glodb/dbfusion/connections"
+	"github.com/glodb/dbfusion/ftypes"
 	"github.com/glodb/dbfusion/queryoptions"
+	"github.com/glodb/dbfusion/utils"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type MongoConnection struct {
 	DBCommon
-	conditions.MongoCondition
 	client *mongo.Client
 }
 
@@ -80,14 +80,14 @@ func (mc *MongoConnection) Connect(uri string) error {
 	return nil
 }
 
-func (mc *MongoConnection) Table(tablename string) DBConnections {
+func (mc *MongoConnection) Table(tablename string) connections.MongoConnection {
 	mc.setTable(tablename)
 	// mc.tableName = tablename
 	return mc
 }
 
 func (mc *MongoConnection) InsertOne(data interface{}) error {
-
+	defer mc.refreshValues()
 	preCreateData, err := mc.preInsert(data)
 
 	if err != nil {
@@ -102,11 +102,34 @@ func (mc *MongoConnection) InsertOne(data interface{}) error {
 }
 
 func (mc *MongoConnection) FindOne(result interface{}, dbFusionOptions ...queryoptions.FindOptions) error {
+	defer mc.refreshValues()
+	if mc.whereQuery != nil {
+		query, err := utils.GetInstance().GetMongoFusionData(mc.whereQuery)
+		if err != nil {
+			return err
+		}
+		mc.whereQuery = query
+	} else {
+		mc.whereQuery = &conditions.MongoData{}
+	}
 	prefindReturn, err := mc.preFind(mc.cache, result, dbFusionOptions...)
 	if err != nil {
 		return err
 	}
 	if prefindReturn.queryDatabase {
+		opts := options.FindOneOptions{}
+		if mc.projection != nil {
+			opts.SetProjection(mc.projection)
+		}
+
+		if mc.skip != 0 {
+			opts.SetSkip(mc.skip)
+		}
+
+		if mc.sort != nil {
+			opts.SetSort(mc.sort)
+		}
+
 		err = mc.client.Database(mc.currentDB).Collection(prefindReturn.entityName).FindOne(context.TODO(), prefindReturn.query).Decode(result)
 		if err != nil {
 			return err
@@ -118,10 +141,12 @@ func (mc *MongoConnection) FindOne(result interface{}, dbFusionOptions ...queryo
 }
 
 func (mc *MongoConnection) UpdateOne(interface{}) error {
+	defer mc.refreshValues()
 	return nil
 }
 
 func (mc *MongoConnection) DeleteOne(interface{}) error {
+	defer mc.refreshValues()
 	return nil
 }
 
@@ -129,17 +154,13 @@ func (mc *MongoConnection) DisConnect() {
 
 }
 
-func (mc *MongoConnection) Paginate(qmap query.QMap) {
+func (mc *MongoConnection) Paginate(interface{}, ...queryoptions.FindOptions) {
 
 }
 func (mc *MongoConnection) Distinct(field string) {
 }
 
 func (mc *MongoConnection) RegisterSchema() {}
-
-// New methods for grouping and ordering.
-func (mc *MongoConnection) GroupBy(keys string)                            {}
-func (mc *MongoConnection) OrderBy(order interface{}, args ...interface{}) {}
 
 // New methods for bulk operations.
 func (mc *MongoConnection) CreateMany([]interface{}) {
@@ -148,21 +169,21 @@ func (mc *MongoConnection) CreateMany([]interface{}) {
 func (mc *MongoConnection) UpdateMany([]interface{}) {
 
 }
-func (mc *MongoConnection) DeleteMany(qmap query.QMap) {
+func (mc *MongoConnection) DeleteMany(qmap ftypes.QMap) {
 
 }
 
 func (mc *MongoConnection) CreateTable(ifNotExist bool) {}
 
-func (mc *MongoConnection) Skip(skip int64) query.Query {
+func (mc *MongoConnection) Skip(skip int64) connections.MongoConnection {
 	mc.skip = skip
 	return mc
 }
-func (mc *MongoConnection) Limit(limit int64) query.Query {
+func (mc *MongoConnection) Limit(limit int64) connections.MongoConnection {
 	mc.limit = limit
 	return mc
 }
-func (mc *MongoConnection) Project(keys map[string]bool) query.Query {
+func (mc *MongoConnection) Project(keys map[string]bool) connections.MongoConnection {
 	selectionKeys := make(map[string]int, 0)
 
 	for key, val := range keys {
@@ -176,16 +197,27 @@ func (mc *MongoConnection) Project(keys map[string]bool) query.Query {
 	return mc
 }
 
-func (mc *MongoConnection) Sort(sort map[string]bool) query.Query {
-	mc.sort = sort
+func (mc *MongoConnection) Sort(sortKey string, sortdesc ...bool) connections.MongoConnection {
+	sortString := sortKey
+	sortVal := 1
+	if len(sortdesc) > 0 {
+		if !sortdesc[0] {
+			sortVal = -1
+		}
+	}
+
+	if mc.sort != nil {
+		sortMap := mc.sort.(map[string]interface{})
+		sortMap[sortString] = sortVal
+		mc.sort = sortMap
+	} else {
+		sortMap := make(map[string]interface{})
+		mc.sort = sortMap
+	}
 	return mc
 }
 
-func (mc *MongoConnection) Where(query interface{}) query.Query {
+func (mc *MongoConnection) Where(query interface{}) connections.MongoConnection {
 	mc.whereQuery = query
-	return mc
-}
-
-func (mc *MongoConnection) Join(join joins.Join) query.Query {
 	return mc
 }
