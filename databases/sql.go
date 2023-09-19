@@ -1,10 +1,8 @@
 package databases
 
-import "github.com/glodb/dbfusion/query"
+import "github.com/glodb/dbfusion/dbconnections"
 
 type SQLQuery interface {
-	query.Query
-	// New method to create a table.
-	Join(joinOperator string, tablename string, condition string, args ...interface{})
+	dbconnections.DBConnections
 	ExecuteSQL(sql string, args ...interface{}) error
 }

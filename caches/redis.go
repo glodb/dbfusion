@@ -2,7 +2,6 @@ package caches
 
 import (
 	"context"
-	"log"
 
 	"github.com/gomodule/redigo/redis"
 	"golang.org/x/sync/semaphore"
@@ -84,18 +83,24 @@ func (rc *RedisCache) DisconnectCache() {
 	rc.pool.Close()
 }
 
-func (rc *RedisCache) GetKey() {
-
+func (rc *RedisCache) GetKey(key string) (interface{}, error) {
+	rc.semaphore.Acquire(context.TODO(), 1)
+	defer rc.semaphore.Release(1)
+	data, err := rc.pool.Get().Do("GET", key)
+	return data, err
 }
 
-func (rc *RedisCache) SetKey(key string, value interface{}) {
+func (rc *RedisCache) SetKey(key string, value interface{}) error {
 	rc.semaphore.Acquire(context.TODO(), 1)
 	defer rc.semaphore.Release(1)
 	_, err := rc.pool.Get().Do("SET", key, value)
+	return err
+}
 
-	if err != nil {
-		log.Printf("WARNING: Redis Cache Failed %v", err)
-	}
+func (rc *RedisCache) FlushAll() {
+	rc.semaphore.Acquire(context.TODO(), 1)
+	defer rc.semaphore.Release(1)
+	rc.pool.Get().Do("FLUSHALL")
 }
 
 func (rc *RedisCache) UpdateKey() {

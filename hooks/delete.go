@@ -1,9 +1,9 @@
 package hooks
 
 type PreDelete interface {
-	PreDelete()
+	PreDelete() PreDelete
 }
 
 type PostDelete interface {
-	PostDelete()
+	PostDelete() PostDelete
 }

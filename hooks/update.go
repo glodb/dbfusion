@@ -1,9 +1,9 @@
 package hooks
 
 type PreUpdate interface {
-	PreUpdate()
+	PreUpdate() PreUpdate
 }
 
 type PostUpdate interface {
-	PostUpdate()
+	PostUpdate() PostUpdate
 }

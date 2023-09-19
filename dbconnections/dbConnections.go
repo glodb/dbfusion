@@ -1,8 +1,6 @@
 package dbconnections
 
-import (
-	"github.com/glodb/dbfusion/query"
-)
+import "github.com/glodb/dbfusion/query"
 
 type DBTypes int
 
@@ -14,6 +12,7 @@ const (
 type DBConnections interface {
 	DBBase
 	query.Query
+	Table(tableName string) DBConnections
 	Connect(uri string) error
 	ConnectWithCertificate(uri string, filePath string) error
 	DisConnect()

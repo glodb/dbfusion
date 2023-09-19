@@ -3,13 +3,17 @@ package dbconnections
 import (
 	"context"
 
+	"github.com/glodb/dbfusion/conditions"
+	"github.com/glodb/dbfusion/joins"
 	"github.com/glodb/dbfusion/query"
+	"github.com/glodb/dbfusion/queryoptions"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type MongoConnection struct {
 	DBCommon
+	conditions.MongoCondition
 	client *mongo.Client
 }
 
@@ -76,43 +80,52 @@ func (mc *MongoConnection) Connect(uri string) error {
 	return nil
 }
 
-func (mc *MongoConnection) Insert(data interface{}) error {
+func (mc *MongoConnection) Table(tablename string) DBConnections {
+	mc.setTable(tablename)
+	// mc.tableName = tablename
+	return mc
+}
 
-	precreatedata, err := mc.preInsert(data)
+func (mc *MongoConnection) InsertOne(data interface{}) error {
+
+	preCreateData, err := mc.preInsert(data)
 
 	if err != nil {
 		return err
 	}
-
-	_, err = mc.client.Database(mc.currentDB).Collection(precreatedata.EntityName).InsertOne(context.TODO(), data)
+	_, err = mc.client.Database(mc.currentDB).Collection(preCreateData.entityName).InsertOne(context.TODO(), preCreateData.mData)
 
 	if err == nil {
-		err = mc.postInsert(mc.cache, precreatedata.Data, precreatedata.mData, mc.currentDB, precreatedata.EntityName)
+		err = mc.postInsert(mc.cache, preCreateData.Data, preCreateData.mData, mc.currentDB, preCreateData.entityName)
 	}
 	return err
 }
 
-func (mc *MongoConnection) Find(interface{}) error {
+func (mc *MongoConnection) FindOne(result interface{}, dbFusionOptions ...queryoptions.FindOptions) error {
+	prefindReturn, err := mc.preFind(mc.cache, result, dbFusionOptions...)
+	if err != nil {
+		return err
+	}
+	if prefindReturn.queryDatabase {
+		err = mc.client.Database(mc.currentDB).Collection(prefindReturn.entityName).FindOne(context.TODO(), prefindReturn.query).Decode(result)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = mc.postFind(mc.cache, result, prefindReturn.entityName, dbFusionOptions...)
+	return err
+}
+
+func (mc *MongoConnection) UpdateOne(interface{}) error {
 	return nil
 }
 
-func (mc *MongoConnection) Update(interface{}) error {
-	return nil
-}
-
-func (mc *MongoConnection) Delete(interface{}) error {
+func (mc *MongoConnection) DeleteOne(interface{}) error {
 	return nil
 }
 
 func (mc *MongoConnection) DisConnect() {
-
-}
-
-func (mc *MongoConnection) Filter(qmap query.QMap) {
-
-}
-
-func (mc *MongoConnection) Sort(order interface{}, args ...interface{}) {
 
 }
 
@@ -123,9 +136,6 @@ func (mc *MongoConnection) Distinct(field string) {
 }
 
 func (mc *MongoConnection) RegisterSchema() {}
-
-// New method for specifying query conditions.
-func (mc *MongoConnection) Where(condition string, args ...interface{}) {}
 
 // New methods for grouping and ordering.
 func (mc *MongoConnection) GroupBy(keys string)                            {}
@@ -142,6 +152,40 @@ func (mc *MongoConnection) DeleteMany(qmap query.QMap) {
 
 }
 
-func (mc *MongoConnection) Skip(skip int64)             {}
-func (mc *MongoConnection) Limit(limit int64)           {}
 func (mc *MongoConnection) CreateTable(ifNotExist bool) {}
+
+func (mc *MongoConnection) Skip(skip int64) query.Query {
+	mc.skip = skip
+	return mc
+}
+func (mc *MongoConnection) Limit(limit int64) query.Query {
+	mc.limit = limit
+	return mc
+}
+func (mc *MongoConnection) Project(keys map[string]bool) query.Query {
+	selectionKeys := make(map[string]int, 0)
+
+	for key, val := range keys {
+		if val {
+			selectionKeys[key] = 1
+		} else {
+			selectionKeys[key] = 0
+		}
+	}
+	mc.projection = selectionKeys
+	return mc
+}
+
+func (mc *MongoConnection) Sort(sort map[string]bool) query.Query {
+	mc.sort = sort
+	return mc
+}
+
+func (mc *MongoConnection) Where(query interface{}) query.Query {
+	mc.whereQuery = query
+	return mc
+}
+
+func (mc *MongoConnection) Join(join joins.Join) query.Query {
+	return mc
+}

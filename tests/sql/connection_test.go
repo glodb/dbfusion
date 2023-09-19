@@ -5,7 +5,8 @@ import (
 
 	"github.com/glodb/dbfusion"
 	"github.com/glodb/dbfusion/caches"
-	"github.com/glodb/dbfusion/dbconnections"
+	"github.com/glodb/dbfusion/connections"
+	"github.com/glodb/dbfusion/implementations"
 )
 
 const (
@@ -21,7 +22,7 @@ func TestMongoConnections(t *testing.T) {
 		ConnectCache   bool
 		CacheType      int
 		ExpectedResult struct {
-			Connection dbconnections.DBConnections
+			Connection connections.SQLConnection
 			Error      error
 		}
 		Name string
@@ -30,14 +31,13 @@ func TestMongoConnections(t *testing.T) {
 			Option: dbfusion.Options{
 				DbName: &validDBName,
 				Uri:    &validUri,
-				DbType: dbconnections.MYSQL,
 			},
 			Name: "Valid Connection",
 			ExpectedResult: struct {
-				Connection dbconnections.DBConnections
+				Connection connections.SQLConnection
 				Error      error
 			}{
-				Connection: &dbconnections.MySql{},
+				Connection: &implementations.MySql{},
 				Error:      nil, // You can set the expected error value here.
 			},
 		},
@@ -45,16 +45,15 @@ func TestMongoConnections(t *testing.T) {
 			Option: dbfusion.Options{
 				DbName: &validDBName,
 				Uri:    &validUri,
-				DbType: dbconnections.MYSQL,
 			},
 			ConnectCache: true,
 			CacheType:    REDIS,
 			Name:         "Valid Connection with Redis Cache",
 			ExpectedResult: struct {
-				Connection dbconnections.DBConnections
+				Connection connections.SQLConnection
 				Error      error
 			}{
-				Connection: &dbconnections.MySql{},
+				Connection: &implementations.MySql{},
 				Error:      nil, // You can set the expected error value here.
 			},
 		},
@@ -73,7 +72,7 @@ func TestMongoConnections(t *testing.T) {
 					}
 				}
 			}
-			con, err := dbfusion.GetInstance().GetConnection(tc.Option)
+			con, err := dbfusion.GetInstance().GetMySqlConnection(tc.Option)
 
 			if err != tc.ExpectedResult.Error {
 				t.Errorf("Expected status code %v, but got %v", tc.ExpectedResult.Error, err)

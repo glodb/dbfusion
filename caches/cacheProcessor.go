@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -74,7 +73,7 @@ func (cp *CacheProcessor) ProcessInsertCache(cache Cache, indexes []string, data
 				cacheIndexes = append(cacheIndexes, index)
 			}
 		}
-		cp.processIndexes(cache, cacheIndexes, data)
+		err = cp.processIndexes(cache, cacheIndexes, data)
 
 	}()
 
@@ -82,15 +81,71 @@ func (cp *CacheProcessor) ProcessInsertCache(cache Cache, indexes []string, data
 	return err
 }
 
-func (cp *CacheProcessor) processIndexes(cache Cache, cacheIndexes []string, data map[string]interface{}) {
+func (cp *CacheProcessor) processIndexes(cache Cache, cacheIndexes []string, data map[string]interface{}) error {
 	ulid := ulid.MustNew(ulid.Timestamp(time.Now()), cp.entropy).String()
 	for _, index := range cacheIndexes {
-		cache.SetKey(index, ulid)
+		err := cache.SetKey(index, ulid)
+		if err != nil {
+			return err
+		}
 	}
 	encodedData, err := codec.GetInstance().Encode(data)
 	if err != nil {
-		log.Printf("WARNING: Encoding Failed %v", err)
-		return
+		return err
 	}
-	cache.SetKey(ulid, encodedData)
+	err = cache.SetKey(ulid, encodedData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cp *CacheProcessor) ProceessGetCache(cache Cache, key string, data interface{}) (bool, error) {
+	firstKey, err := cache.GetKey(key)
+	if err != nil {
+		return false, err
+	}
+
+	if firstKey == nil {
+		return false, nil
+	}
+	redisData, err := cache.GetKey(string(firstKey.([]byte)))
+	if redisData == nil {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	codec.GetInstance().Decode(redisData.([]byte), data)
+
+	return true, nil
+}
+
+func (cp *CacheProcessor) ProceessGetQueryCache(cache Cache, key string, data interface{}) (bool, error) {
+	redisData, err := cache.GetKey(key)
+
+	if err != nil {
+		return false, err
+	}
+
+	if redisData == nil {
+		return false, nil
+	}
+
+	codec.GetInstance().Decode(redisData.([]byte), data)
+	return true, nil
+}
+
+func (cp *CacheProcessor) ProceessSetQueryCache(cache Cache, key string, data interface{}) (bool, error) {
+	encodedData, err := codec.GetInstance().Encode(data)
+	if err != nil {
+		return false, err
+	}
+	err = cache.SetKey(key, encodedData)
+
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

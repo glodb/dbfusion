@@ -5,5 +5,5 @@ type PreInsert interface {
 }
 
 type PostInsert interface {
-	PostInsert()
+	PostInsert() PostInsert
 }
