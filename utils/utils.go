@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -100,7 +99,7 @@ func (u *utils) buildSqlData(key string, val interface{}, cacheKey *string, valu
 
 	switch tempKey {
 	case "IN":
-		log.Println(*query, key)
+		// log.Println(*query, key)
 		inValues := val.([]interface{})
 		*valuesInterface = append(*valuesInterface, inValues...)
 		inquery := "("
@@ -222,22 +221,4 @@ func (u *utils) GetMongoFusionData(data interface{}) (conditions.DBFusionData, e
 	dbFusionData.SetCacheValues(values)
 	dbFusionData.SetQuery(query)
 	return dbFusionData, nil
-	// var dbFusionData conditions.DBFusionData
-	// values := ""
-	// query := ""
-	// if value, ok := data.(conditions.DBFusionData); ok {
-	// 	dbFusionData = value
-	// } else if value, ok := data.(ftypes.QMap); ok {
-	// 	for key, val := range value {
-	// 		values += fmt.Sprintf("%v", val)
-	// 	}
-	// } else if value, ok := data.(ftypes.DMap); ok {
-	// 	for _, val := range value {
-	// 		values += fmt.Sprintf("%v", val.Value)
-	// 	}
-	// } else if value, ok := data.(map[string]interface{}); ok {
-	// 	for _, val := range value {
-	// 		values += fmt.Sprintf("%v", val)
-	// 	}
-	// }
 }

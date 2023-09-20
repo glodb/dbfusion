@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"time"
 
 	"github.com/glodb/dbfusion/hooks"
 )
@@ -23,13 +22,17 @@ func (u UserTest) GetEntityName() string {
 	return "users"
 }
 
+func (ne UserTest) GetCacheIndexes() []string {
+	return []string{"email", "email,password", "email,username"}
+}
+
 func (u UserTest) PreInsert() hooks.PreInsert {
 
 	//Sample password hashing to show the effect of pre insert hook
 	hasher := md5.New()
 	io.WriteString(hasher, u.Password)
 	u.Password = fmt.Sprintf("%x", hasher.Sum(nil))
-	u.CreatedAt = time.Now().Unix()
+	u.CreatedAt = 0
 	return u
 }
 

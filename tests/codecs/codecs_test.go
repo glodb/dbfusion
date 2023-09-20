@@ -1,7 +1,6 @@
 package codecs_test
 
 import (
-	"log"
 	"testing"
 
 	"github.com/glodb/dbfusion/codec"
@@ -33,5 +32,4 @@ func TestJsonDecode(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error in decoding json %v", err)
 	}
-	log.Println(newData)
 }

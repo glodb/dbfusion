@@ -26,3 +26,8 @@ type preFindReturn struct {
 	dataType      reflect.Type
 	dataValue     reflect.Value
 }
+
+type preUpdateReturn struct {
+	entityName string
+	queryData  interface{}
+}

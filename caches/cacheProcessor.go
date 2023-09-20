@@ -191,3 +191,42 @@ func (cp *cacheProcessor) ProceessSetQueryCache(cache Cache, key string, data in
 	}
 	return true, nil
 }
+
+func (cp *cacheProcessor) ProceessUpdateCache(cache Cache, oldKeys []string, newKeys []string, data interface{}) (bool, error) {
+	if len(newKeys) == 0 {
+		return true, nil
+	}
+	compKey := ""
+	//This loop deletes the old keys but tries to save the composite key
+	for _, key := range oldKeys {
+		if compKey == "" {
+
+			firstKey, err := cache.GetKey(key)
+			if err != nil {
+				return false, err
+			}
+			if firstKey != nil {
+				compKey = string(firstKey.([]byte))
+			}
+		}
+		cache.DelKey(key)
+	}
+
+	//If composite key not found create one
+	if compKey == "" {
+		compKey = ulid.MustNew(ulid.Timestamp(time.Now()), cp.entropy).String()
+	}
+
+	//Set the comppsite keys on the
+	for _, key := range newKeys {
+		cache.SetKey(key, compKey)
+	}
+
+	encodedData, err := codec.GetInstance().Encode(data)
+	if err != nil {
+		return false, err
+	}
+	cache.SetKey(compKey, encodedData)
+
+	return false, nil
+}

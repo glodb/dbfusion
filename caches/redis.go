@@ -90,9 +90,10 @@ func (rc *RedisCache) IsConnected() bool {
 		return false
 	}
 
-	conn := rc.pool.Get()
+	// Acquire a semaphore to ensure exclusive access to this operation.
 	rc.semaphore.Acquire(context.TODO(), 1)
 	defer rc.semaphore.Release(1)
+	conn := rc.pool.Get()
 	defer conn.Close()
 	if err := conn.Err(); err != nil {
 		return false
@@ -113,6 +114,7 @@ func (rc *RedisCache) DisconnectCache() {
 //   - interface{}: The cached value.
 //   - error: An error if the value cannot be retrieved.
 func (rc *RedisCache) GetKey(key string) (interface{}, error) {
+	// Acquire a semaphore to ensure exclusive access to this operation.
 	rc.semaphore.Acquire(context.TODO(), 1)
 	defer rc.semaphore.Release(1)
 	data, err := rc.pool.Get().Do("GET", key)
@@ -126,6 +128,7 @@ func (rc *RedisCache) GetKey(key string) (interface{}, error) {
 // Returns:
 //   - error: An error if the value cannot be stored in the cache.
 func (rc *RedisCache) SetKey(key string, value interface{}) error {
+	// Acquire a semaphore to ensure exclusive access to this operation.
 	rc.semaphore.Acquire(context.TODO(), 1)
 	defer rc.semaphore.Release(1)
 	_, err := rc.pool.Get().Do("SET", key, value)
@@ -134,17 +137,27 @@ func (rc *RedisCache) SetKey(key string, value interface{}) error {
 
 // FlushAll clears all data stored in the Redis cache. Use with caution as it removes all cached items.
 func (rc *RedisCache) FlushAll() {
+	// Acquire a semaphore to ensure exclusive access to this operation.
 	rc.semaphore.Acquire(context.TODO(), 1)
 	defer rc.semaphore.Release(1)
 	rc.pool.Get().Do("FLUSHALL")
 }
 
-// UpdateKey updates a key in the Redis cache.
-func (rc *RedisCache) UpdateKey() {
-	// Implementation needed.
-}
+// DelKey deletes a key from the Redis cache.
+// It acquires a semaphore to ensure thread safety during the operation.
+//
+// Parameters:
+//   - key (string): The key to be deleted from the cache.
+//
+// Returns:
+//   - error: An error, if any, that occurred during the deletion.
+func (rc *RedisCache) DelKey(key string) error {
+	// Acquire a semaphore to ensure exclusive access to this operation.
+	rc.semaphore.Acquire(context.TODO(), 1)
+	defer rc.semaphore.Release(1)
 
-// DeleteKey deletes a key from the Redis cache.
-func (rc *RedisCache) DeleteKey() {
-	// Implementation needed.
+	// Use the Redis connection pool to send the DEL command and delete the key.
+	_, err := rc.pool.Get().Do("DEL", key)
+
+	return err
 }

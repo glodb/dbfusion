@@ -9,6 +9,9 @@ type MongoData struct {
 }
 
 func (md *MongoData) GetQuery() interface{} {
+	if md.Query == nil {
+		md.Query = primitive.D{}
+	}
 	return md.Query
 }
 

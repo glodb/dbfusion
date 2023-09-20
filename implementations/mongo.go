@@ -6,8 +6,10 @@ import (
 	"github.com/glodb/dbfusion/conditions"
 	"github.com/glodb/dbfusion/connections"
 	"github.com/glodb/dbfusion/ftypes"
+	"github.com/glodb/dbfusion/hooks"
 	"github.com/glodb/dbfusion/queryoptions"
 	"github.com/glodb/dbfusion/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -140,9 +142,63 @@ func (mc *MongoConnection) FindOne(result interface{}, dbFusionOptions ...queryo
 	return err
 }
 
-func (mc *MongoConnection) UpdateOne(interface{}) error {
+func (mc *MongoConnection) UpdateAndFindOne(data interface{}, result interface{}, upsert bool) error {
 	defer mc.refreshValues()
-	return nil
+
+	var fusionQuery conditions.DBFusionData
+	if mc.whereQuery != nil {
+		query, err := utils.GetInstance().GetMongoFusionData(mc.whereQuery)
+		if err != nil {
+			return err
+		}
+		fusionQuery = query
+	} else {
+		fusionQuery = &conditions.MongoData{}
+	}
+
+	preUpdateReturn, err := mc.preUpdate(data, connections.MONGO)
+	if err != nil {
+		return err
+	}
+	opts := options.FindOneAndUpdateOptions{}
+	if mc.projection != nil {
+		opts.SetProjection(mc.projection)
+	}
+
+	if mc.sort != nil {
+		opts.SetSort(mc.sort)
+	}
+
+	opts.SetUpsert(upsert)
+
+	opts.SetReturnDocument(options.After)
+
+	updateCache := false
+	oldKeys := []string{}
+	newKeys := []string{}
+	var cacheHook hooks.CacheHook
+	if value, ok := interface{}(result).(hooks.CacheHook); ok {
+		err = mc.client.Database(mc.currentDB).Collection(preUpdateReturn.entityName).FindOne(context.TODO(), fusionQuery.GetQuery().(primitive.D)).Decode(result)
+		if err != nil {
+			return err
+		}
+		tagMapValue, err := mc.createTagValueMap(result)
+		if err == nil {
+			oldKeys = mc.getAllCacheValues(value, tagMapValue, preUpdateReturn.entityName)
+			updateCache = true
+			cacheHook = value
+		}
+	}
+	err = mc.client.Database(mc.currentDB).Collection(preUpdateReturn.entityName).FindOneAndUpdate(context.TODO(), fusionQuery.GetQuery().(primitive.D), preUpdateReturn.queryData.(primitive.D), &opts).Decode(result)
+	if err != nil {
+		return err
+	}
+	if updateCache {
+		tagMapValue, _ := mc.createTagValueMap(result)
+		newKeys = mc.getAllCacheValues(cacheHook, tagMapValue, preUpdateReturn.entityName)
+	}
+	err = mc.postUpdate(mc.cache, result, preUpdateReturn.entityName, oldKeys, newKeys)
+	return err
 }
 
 func (mc *MongoConnection) DeleteOne(interface{}) error {

@@ -7,6 +7,6 @@ import (
 type crud interface {
 	InsertOne(interface{}) error
 	FindOne(interface{}, ...queryoptions.FindOptions) error
-	UpdateOne(interface{}) error
+	UpdateAndFindOne(interface{}, interface{}, bool) error
 	DeleteOne(interface{}) error
 }

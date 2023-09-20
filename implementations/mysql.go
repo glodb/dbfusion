@@ -88,8 +88,6 @@ func (ms *MySql) FindOne(result interface{}, dbFusionOptions ...queryoptions.Fin
 
 		query := ms.createFindQuery(prefindReturn.entityName, true)
 
-		log.Println(query)
-
 		rows, err := ms.db.Query(query, valuesInterface...)
 
 		if err != nil {
@@ -145,13 +143,27 @@ func (ms *MySql) FindOne(result interface{}, dbFusionOptions ...queryoptions.Fin
 	}
 
 	err = ms.postFind(ms.cache, result, prefindReturn.entityName, dbFusionOptions...)
-
-	ms.refreshValues()
 	return err
 }
 
-func (ms *MySql) UpdateOne(interface{}) error {
+func (ms *MySql) UpdateAndFindOne(data interface{}, result interface{}, upsert bool) error {
 	defer ms.refreshValues()
+	var fusionQuery conditions.DBFusionData
+	if ms.whereQuery != nil {
+		query, err := utils.GetInstance().GetSqlFusionData(ms.whereQuery)
+		if err != nil {
+			return err
+		}
+		fusionQuery = query
+	} else {
+		fusionQuery = &conditions.MongoData{}
+	}
+
+	preUpdateReturn, err := ms.preUpdate(data, connections.MYSQL)
+	if err != nil {
+		return err
+	}
+	log.Println(fusionQuery, preUpdateReturn)
 	return nil
 }
 

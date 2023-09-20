@@ -42,18 +42,12 @@ Methods:
 6. FlushAll()
    - Description: Clears all data stored in the cache. Use with caution as it removes all cached items.
 
-7. DeleteKey(key string)
-   - Description: Deletes a specific key and its associated value from the cache.
+7. DelKey(key string) error
+   - Description: Deletes a key from the cache.
    - Parameters:
      - `key` (string): The key to be deleted from the cache.
-
-8. UpdateKey(key string, value interface{}) error
-   - Description: Updates the value associated with a specific key in the cache.
-   - Parameters:
-     - `key` (string): The key to be updated.
-     - `value` (interface{}): The new value to replace the existing one.
    - Returns:
-     - `error`: An error if the update cannot be performed.
+     - `error`: An error if the key cannot be deleted from the cache.
 
 This interface provides a common set of methods that cache implementations must adhere to, allowing dbFusion to work seamlessly with various caching systems. Implement this interface to create a cache that can be used with dbFusion's caching capabilities.
 */
@@ -64,6 +58,5 @@ type Cache interface {
 	GetKey(key string) (interface{}, error)
 	SetKey(key string, value interface{}) error
 	FlushAll()
-	DeleteKey()
-	UpdateKey()
+	DelKey(key string) error
 }
