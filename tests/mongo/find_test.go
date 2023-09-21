@@ -52,14 +52,14 @@ func TestMongoFind(t *testing.T) {
 	}{
 		{
 			Con:     con,
-			Query:   ftypes.QMap{"email": "aafaqzahid9@gmail.com"},
+			Query:   ftypes.QMap{"firstname": "Aafaq"},
 			Data:    &models.UserTest{},
 			Options: queryoptions.FindOptions{ForceDB: true, CacheResult: true},
 			ExpectedResult: FindTestResults{
 				data: &models.UserTest{
 					FirstName: "Aafaq",
-					Email:     "aafaqzahid9@gmail.com",
-					Password:  "0f0bf2567ec111697671d2fd76af0d6c",
+					Email:     "aafaqzahid9+1@gmail.com",
+					Password:  "change-me",
 					UpdatedAt: 0,
 					CreatedAt: 0,
 				},
@@ -76,7 +76,7 @@ func TestMongoFind(t *testing.T) {
 				data: &models.UserTest{
 					FirstName: "Aafaq",
 					Email:     "aafaqzahid9@gmail.com",
-					Password:  "0f0bf2567ec111697671d2fd76af0d6c",
+					Password:  "change-me",
 					UpdatedAt: 0,
 					CreatedAt: 0,
 				},
@@ -124,15 +124,15 @@ func TestMongoFind(t *testing.T) {
 			Con:       con,
 			Type:      1,
 			TableName: "users",
-			Query:     ftypes.QMap{"email": "aafaqzahid9@gmail.com"},
+			Query:     ftypes.QMap{"firstname": "Aafaq"},
 			Data:      &map[string]interface{}{},
 			Options:   queryoptions.FindOptions{ForceDB: true},
 			ExpectedResult: FindTestResults{
 				data: &map[string]interface{}{
 					"createdAt": int64(0),
-					"email":     "aafaqzahid9@gmail.com",
+					"email":     "aafaqzahid9+1@gmail.com",
 					"firstname": "Aafaq",
-					"password":  "0f0bf2567ec111697671d2fd76af0d6c",
+					"password":  "change-me",
 					"updatedAt": int64(0),
 					"username":  "",
 				},
@@ -155,15 +155,15 @@ func TestMongoFind(t *testing.T) {
 			Con:       con,
 			Type:      1,
 			TableName: "users",
-			Query:     ftypes.QMap{"email": "aafaqzahid9@gmail.com"},
+			Query:     ftypes.QMap{"firstname": "Aafaq"},
 			Data:      &map[string]interface{}{},
 			Options:   queryoptions.FindOptions{ForceDB: true},
 			ExpectedResult: FindTestResults{
 				data: &map[string]interface{}{
 					"createdAt": int64(0),
-					"email":     "aafaqzahid9@gmail.com",
+					"email":     "aafaqzahid9+1@gmail.com",
 					"firstname": "Aafaq",
-					"password":  "0f0bf2567ec111697671d2fd76af0d6c",
+					"password":  "change-me",
 					"updatedAt": int64(0),
 					"username":  "",
 				},

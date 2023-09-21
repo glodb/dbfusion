@@ -11,5 +11,5 @@ type baseConnections interface {
 	base
 	Connect(uri string) error
 	ConnectWithCertificate(uri string, filePath string) error
-	DisConnect()
+	DisConnect() error
 }

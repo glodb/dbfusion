@@ -1,5 +1,4 @@
 # DBFusion: Centralized Database Support for Golang
-# Note: The project is in development mode so API documentation not available as yet.
 
 # DBFusion
 

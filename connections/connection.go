@@ -9,13 +9,10 @@ import (
 type Connection interface {
 	crud
 	baseConnections
-	// AddCompositeCacheIndex()
-	// AddCompositeIndex()
 	Paginate(interface{}, ...queryoptions.FindOptions)
-	Distinct(field string)
-
 	RegisterSchema()
 	// New methods for bulk operations.
+	FindMany(interface{})
 	CreateMany([]interface{})
 	UpdateMany([]interface{})
 	DeleteMany(ftypes.QMap)

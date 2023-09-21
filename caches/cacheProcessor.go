@@ -192,15 +192,28 @@ func (cp *cacheProcessor) ProceessSetQueryCache(cache Cache, key string, data in
 	return true, nil
 }
 
+// ProceessUpdateCache updates the Redis cache by deleting old keys and creating new keys.
+// Parameters:
+//   - cache (Cache): The cache instance used for data storage and retrieval.
+//   - oldKeys ([]string): A slice of old keys to be deleted from the cache.
+//   - newKeys ([]string): A slice of new keys to be created in the cache.
+//   - data (interface{}): The data to be stored in the cache.
+//
+// Returns:
+//   - bool: A boolean indicating success (true) or failure (false).
+//   - error: An error, if any, that occurred during the cache update.
 func (cp *cacheProcessor) ProceessUpdateCache(cache Cache, oldKeys []string, newKeys []string, data interface{}) (bool, error) {
+	// Check if there are no new keys to create, and return success.
 	if len(newKeys) == 0 {
 		return true, nil
 	}
+
 	compKey := ""
-	//This loop deletes the old keys but tries to save the composite key
+
+	// This loop deletes the old keys but tries to save the composite key.
 	for _, key := range oldKeys {
 		if compKey == "" {
-
+			// Attempt to retrieve the firstKey associated with the old key.
 			firstKey, err := cache.GetKey(key)
 			if err != nil {
 				return false, err
@@ -209,24 +222,27 @@ func (cp *cacheProcessor) ProceessUpdateCache(cache Cache, oldKeys []string, new
 				compKey = string(firstKey.([]byte))
 			}
 		}
+		// Delete the old key from the cache.
 		cache.DelKey(key)
 	}
 
-	//If composite key not found create one
+	// If composite key not found, create one.
 	if compKey == "" {
 		compKey = ulid.MustNew(ulid.Timestamp(time.Now()), cp.entropy).String()
 	}
 
-	//Set the comppsite keys on the
+	// Set the composite keys on the new keys in the cache.
 	for _, key := range newKeys {
 		cache.SetKey(key, compKey)
 	}
 
+	// Encode the data and store it in the cache with the composite key.
 	encodedData, err := codec.GetInstance().Encode(data)
 	if err != nil {
 		return false, err
 	}
 	cache.SetKey(compKey, encodedData)
 
+	// Return success and no error.
 	return false, nil
 }

@@ -82,9 +82,10 @@ func TestSqlFind(t *testing.T) {
 			Options:    queryoptions.FindOptions{ForceDB: true},
 			ExpectedResult: FindTestResults{
 				data: &models.UserTest{
-					FirstName: "Aafaq",
+					FirstName: "Zahid",
 					Email:     "aafaqzahid9@gmail.com",
-					Password:  "0f0bf2567ec111697671d2fd76af0d6c",
+					Password:  "change-me",
+					Username:  "aafaqzahid",
 					UpdatedAt: 0,
 					CreatedAt: 1694159585,
 				},
@@ -102,7 +103,7 @@ func TestSqlFind(t *testing.T) {
 			Options: queryoptions.FindOptions{ForceDB: false},
 			ExpectedResult: FindTestResults{
 				data: &models.UserTest{
-					FirstName: "Aafaq",
+					FirstName: "Zahid",
 				},
 				err: nil,
 			},
@@ -177,7 +178,7 @@ func TestSqlFind(t *testing.T) {
 			ExpectedResult: FindTestResults{
 				data: &models.UserTest{
 					FirstName: "Aafaq",
-					Password:  "0f0bf2567ec111697671d2fd76af0d6c",
+					Password:  "change-me",
 				},
 				err: nil,
 			},
@@ -190,7 +191,7 @@ func TestSqlFind(t *testing.T) {
 			TestData: TestData{
 				projections:      map[string]bool{"firstname": true, "password": true},
 				groupByFields:    []string{"firstname", "password"},
-				havingConditions: ftypes.DMap{{Key: "password = ", Value: "0f0bf2567ec111697671d2fd76af0d6c"}},
+				havingConditions: ftypes.DMap{{Key: "password = ", Value: "change-me"}},
 				whereConditions: ftypes.DMap{{Key: "firstname =", Value: "Aafaq"},
 					{Key: " AND email <> ", Value: "gulandaman@gmail.com"}},
 			},
@@ -198,7 +199,7 @@ func TestSqlFind(t *testing.T) {
 			ExpectedResult: FindTestResults{
 				data: &models.UserTest{
 					FirstName: "Aafaq",
-					Password:  "0f0bf2567ec111697671d2fd76af0d6c",
+					Password:  "change-me",
 				},
 				err: nil,
 			},
@@ -312,7 +313,8 @@ func TestSqlFind(t *testing.T) {
 				data: &models.UserTest{
 					FirstName: "Aafaq",
 					Email:     "aafaqzahid9@gmail.com",
-					Password:  "0f0bf2567ec111697671d2fd76af0d6c",
+					Password:  "change-me",
+					Username:  "aafaqzahid",
 					UpdatedAt: 0,
 					CreatedAt: 0,
 				},
@@ -327,7 +329,7 @@ func TestSqlFind(t *testing.T) {
 			TestData: TestData{
 				projections:     map[string]bool{"users.firstname": true},
 				whereConditions: ftypes.DMap{{Key: "b.firstname = ", Value: "Aafaq"}, {Key: " AND b.email <> ", Value: "gulandaman@gmail.com"}},
-				joinValues:      []joins.Join{{Operator: joins.INNER_JOIN, TableName: "users b", Condition: "users.email=b.email"}},
+				joinValues:      []joins.Join{{Operator: joins.INNER_JOIN, TableName: "users b", Condition: "users.firstname=b.firstname"}},
 			},
 			Options: queryoptions.FindOptions{ForceDB: true},
 			ExpectedResult: FindTestResults{
@@ -350,7 +352,7 @@ func TestSqlFind(t *testing.T) {
 					{Key: " AND b.email <> ", Value: "gulandaman@gmail.com"},
 					{Key: ")"},
 				},
-				joinValues: []joins.Join{{Operator: joins.INNER_JOIN, TableName: "users b", Condition: "users.email=b.email"}},
+				joinValues: []joins.Join{{Operator: joins.INNER_JOIN, TableName: "users b", Condition: "users.firstname=b.firstname"}},
 			},
 			Options: queryoptions.FindOptions{ForceDB: true},
 			ExpectedResult: FindTestResults{
@@ -374,7 +376,7 @@ func TestSqlFind(t *testing.T) {
 					{Key: ")"},
 					{Key: "AND b.email IN", Value: []interface{}{"aafaqzahid9@gmail.com", "aafaq.zahid9@gmail.com"}},
 				},
-				joinValues: []joins.Join{{Operator: joins.INNER_JOIN, TableName: "users b", Condition: "users.email=b.email"}},
+				joinValues: []joins.Join{{Operator: joins.INNER_JOIN, TableName: "users b", Condition: "users.firstname=b.firstname"}},
 			},
 			Options: queryoptions.FindOptions{ForceDB: true},
 			ExpectedResult: FindTestResults{

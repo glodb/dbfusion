@@ -30,4 +30,7 @@ type preFindReturn struct {
 type preUpdateReturn struct {
 	entityName string
 	queryData  interface{}
+	dataType   reflect.Type
+	dataValue  reflect.Value
+	structType int
 }

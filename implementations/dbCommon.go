@@ -65,6 +65,44 @@ func (dbc *DBCommon) checkPtr(data interface{}) (reflect.Value, reflect.Type) {
 	return dataValue, dataType
 }
 
+func (ms *DBCommon) merge(a interface{}, b interface{}) interface{} {
+	// Use reflection to create a new instance of User
+	result := reflect.New(reflect.TypeOf(a)).Interface()
+
+	// Use reflection to get the values of a and b
+	valA := reflect.ValueOf(a)
+	valB := reflect.ValueOf(b)
+
+	switch valA.Type().Kind() {
+	case reflect.Ptr:
+		ptrValue := reflect.ValueOf(a)
+		valA = ptrValue.Elem()
+	}
+
+	switch valB.Type().Kind() {
+	case reflect.Ptr:
+		ptrValue := reflect.ValueOf(b)
+		valB = ptrValue.Elem()
+	}
+
+	// Iterate over the fields of User and merge values
+	for i := 0; i < valA.Type().NumField(); i++ {
+		fieldName := valA.Type().Field(i).Name
+		fieldA := valA.FieldByName(fieldName)
+		fieldB := valB.FieldByName(fieldName)
+
+		if fieldA.IsValid() && !fieldA.IsZero() {
+			// If fieldA is valid and not zero, use its value
+			reflect.ValueOf(result).Elem().FieldByName(fieldName).Set(fieldA)
+		} else if fieldB.IsValid() && !fieldB.IsZero() {
+			// If fieldB is valid and not zero, use its value
+			reflect.ValueOf(result).Elem().FieldByName(fieldName).Set(fieldB)
+		}
+	}
+
+	return result
+}
+
 func (dbc *DBCommon) createTagValueMap(data interface{}) (tagMapValue map[string]interface{}, err error) {
 	dataValue := reflect.ValueOf(data)
 	dataType := dataValue.Type()
@@ -124,6 +162,10 @@ func (dbc *DBCommon) getEntityName(data interface{}) (entityData entityData, err
 			err = dbfusionErrors.ErrStringMapRequired
 			return
 		}
+	case reflect.String:
+		entityData.entityName = dbc.tableName
+		entitySet = true
+		structType = 3
 	default:
 		err = dbfusionErrors.ErrStringMapRequired
 		return
@@ -366,6 +408,91 @@ func (dbc *DBCommon) buildMongoUpdate(data interface{}, nameData entityData) (in
 	return topMap, nil
 }
 
+func (dbc *DBCommon) buildMySqlUpdate(data interface{}, nameData entityData) (string, []interface{}, error) {
+	dataValue := reflect.ValueOf(data)
+	dataType := dataValue.Type()
+
+	switch dataType.Kind() {
+	case reflect.Ptr:
+		ptrValue := reflect.ValueOf(data)
+		dataValue = ptrValue.Elem()
+		dataType = dataValue.Type()
+	}
+
+	structType := 0
+	switch dataType.Kind() {
+	case reflect.Struct:
+		structType = 1
+	}
+	setString := ""
+	valuesInterface := make([]interface{}, 0)
+
+	if structType == 1 { //Its a structure
+		for i := 0; i < dataType.NumField(); i++ {
+			field := dataType.Field(i)
+
+			if structType == 1 {
+			}
+			rawtags := strings.Split(field.Tag.Get("dbfusion"), ",")
+			tagName := rawtags[0]
+
+			if tagName == "" {
+				continue
+			}
+			value := dataValue.Field(i).Interface()
+
+			if !dbc.isFieldSet(dataValue.Field(i)) {
+				continue
+			}
+			if setString == "" {
+				setString += fmt.Sprintf("%s = ?", tagName)
+			} else {
+				setString += fmt.Sprintf(",%s = ?", tagName)
+			}
+			valuesInterface = append(valuesInterface, value)
+
+		}
+		setString = "SET " + setString
+
+	} else {
+		if value, ok := data.(ftypes.QMap); ok {
+			for key, val := range value {
+				if setString == "" {
+					setString += fmt.Sprintf("%s = ?", key)
+				} else {
+					setString += fmt.Sprintf(",%s = ?", key)
+				}
+				valuesInterface = append(valuesInterface, val)
+			}
+			setString = "SET " + setString
+		} else if value, ok := data.(ftypes.DMap); ok {
+			for _, val := range value {
+				if setString == "" {
+					setString += fmt.Sprintf("%s = ?", val.Key)
+				} else {
+					setString += fmt.Sprintf(",%s = ?", val.Key)
+				}
+				valuesInterface = append(valuesInterface, val.Value)
+			}
+			setString = "SET " + setString
+		} else if value, ok := data.(map[string]interface{}); ok {
+
+			for key, val := range value {
+				if setString == "" {
+					setString += fmt.Sprintf("%s = ?", key)
+				} else {
+					setString += fmt.Sprintf(",%s = ?", key)
+				}
+				valuesInterface = append(valuesInterface, val)
+			}
+			setString = "SET " + setString
+		} else {
+			return "", valuesInterface, dbfusionErrors.ErrInvalidType
+		}
+	}
+	return setString, valuesInterface, nil
+}
+
 func (dbc *DBCommon) preUpdate(data interface{}, dbType ftypes.DBTypes) (preUpdateData preUpdateReturn, err error) {
 
 	if value, ok := interface{}(data).(hooks.PreUpdate); ok {
@@ -378,13 +505,44 @@ func (dbc *DBCommon) preUpdate(data interface{}, dbType ftypes.DBTypes) (preUpda
 		err = nameErr
 		return
 	}
+
 	preUpdateData.entityName = nameData.entityName
+	preUpdateData.dataValue = nameData.dataValue
+	preUpdateData.dataType = nameData.dataType
+	preUpdateData.structType = nameData.structType
 
 	if dbType == connections.MONGO {
 		preUpdateData.queryData, err = dbc.buildMongoUpdate(data, nameData)
-	} else if dbType == connections.MYSQL {
-
 	}
+	return
+}
+
+func (dbc *DBCommon) preDelete(data interface{}) (preUpdateData preUpdateReturn, err error) {
+
+	if data == nil {
+		data = dbc.whereQuery.(conditions.DBFusionData).GetQuery()
+	}
+	if value, ok := interface{}(data).(hooks.PreUpdate); ok {
+		data = value.PreUpdate()
+	}
+
+	nameData, nameErr := dbc.getEntityName(data)
+
+	if nameErr != nil {
+		err = nameErr
+		return
+	}
+
+	if nameData.entityName == "" {
+		err = dbfusionErrors.ErrEntityNameRequired
+		return
+	}
+
+	preUpdateData.entityName = nameData.entityName
+	preUpdateData.dataValue = nameData.dataValue
+	preUpdateData.dataType = nameData.dataType
+	preUpdateData.structType = nameData.structType
+
 	return
 }
 

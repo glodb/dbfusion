@@ -2,6 +2,7 @@ package implementations
 
 import (
 	"context"
+	"log"
 
 	"github.com/glodb/dbfusion/conditions"
 	"github.com/glodb/dbfusion/connections"
@@ -201,19 +202,41 @@ func (mc *MongoConnection) UpdateAndFindOne(data interface{}, result interface{}
 	return err
 }
 
-func (mc *MongoConnection) DeleteOne(interface{}) error {
+func (mc *MongoConnection) DeleteOne(sliceData ...interface{}) error {
 	defer mc.refreshValues()
+	var data interface{}
+	if len(sliceData) != 0 {
+		data = sliceData[0]
+	}
+	if mc.whereQuery != nil {
+		query, err := utils.GetInstance().GetMongoFusionData(mc.whereQuery)
+		if err != nil {
+			return err
+		}
+		mc.whereQuery = query
+	} else {
+		mc.whereQuery = &conditions.MongoData{}
+	}
+	_, err := mc.preDelete(data)
+
+	if err != nil {
+		return err
+	}
+	if data != nil { //Need to delete from a struct
+		log.Println("Got Data")
+	} else { //need to delete from whereClause
+
+		//Simple Delete the data here as cann't check the cache for this
+		log.Println("Got Where", mc.whereQuery.(conditions.DBFusionData))
+	}
 	return nil
 }
 
-func (mc *MongoConnection) DisConnect() {
-
+func (mc *MongoConnection) DisConnect() error {
+	return mc.client.Disconnect(context.TODO())
 }
 
 func (mc *MongoConnection) Paginate(interface{}, ...queryoptions.FindOptions) {
-
-}
-func (mc *MongoConnection) Distinct(field string) {
 }
 
 func (mc *MongoConnection) RegisterSchema() {}
@@ -221,6 +244,8 @@ func (mc *MongoConnection) RegisterSchema() {}
 // New methods for bulk operations.
 func (mc *MongoConnection) CreateMany([]interface{}) {
 
+}
+func (mc *MongoConnection) FindMany(interface{}) {
 }
 func (mc *MongoConnection) UpdateMany([]interface{}) {
 

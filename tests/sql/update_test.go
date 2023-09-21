@@ -1,6 +1,7 @@
 package sqltest
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/glodb/dbfusion"
@@ -35,7 +36,7 @@ func TestSQLUpdate(t *testing.T) {
 	}
 
 	users := models.UserTest{
-		FirstName: "Aafaq",
+		FirstName: "Zahid",
 		Email:     "aafaqzahid9@gmail.com",
 		Password:  "change-me",
 	}
@@ -54,12 +55,19 @@ func TestSQLUpdate(t *testing.T) {
 			Con:        con,
 			Data:       users,
 			Conditions: []int{WHERE},
-			TestData:   TestData{whereConditions: ftypes.DMap{{Key: "firstname =", Value: "Zahid"}}},
+			TestData:   TestData{whereConditions: ftypes.DMap{{Key: "firstname =", Value: "Zahid3"}}},
 			Result:     &models.UserTest{},
 			Upsert:     true,
 			ExpectedResult: UpdateTestResults{
-				data: nil,
-				err:  nil,
+				data: models.UserTest{
+					FirstName: "Zahid",
+					Email:     "aafaqzahid9@gmail.com",
+					Username:  "",
+					Password:  "change-me",
+					CreatedAt: 0,
+					UpdatedAt: 0,
+				},
+				err: nil,
 			},
 			Name: "Testing update with upsert",
 		},
@@ -71,10 +79,37 @@ func TestSQLUpdate(t *testing.T) {
 			Result:     &models.UserTest{},
 			Upsert:     true,
 			ExpectedResult: UpdateTestResults{
-				data: nil,
-				err:  nil,
+				data: models.UserTest{
+					FirstName: "Zahid",
+					Email:     "aafaqzahid9@gmail.com",
+					Username:  "",
+					Password:  "change-me",
+					CreatedAt: 0,
+					UpdatedAt: 0,
+				},
+				err: nil,
 			},
 			Name: "Testing without upsert",
+		},
+		{
+			Con:        con,
+			Data:       users,
+			Conditions: []int{WHERE},
+			TestData:   TestData{whereConditions: ftypes.DMap{{Key: "firstname =", Value: "Aafaq"}}},
+			Result:     &models.UserTest{},
+			Upsert:     true,
+			ExpectedResult: UpdateTestResults{
+				data: models.UserTest{
+					FirstName: "Zahid",
+					Email:     "aafaqzahid9@gmail.com",
+					Username:  "",
+					Password:  "change-me",
+					CreatedAt: 0,
+					UpdatedAt: 0,
+				},
+				err: nil,
+			},
+			Name: "Testing without upsert with existing user",
 		},
 	}
 	for _, tc := range testCases {
@@ -114,6 +149,23 @@ func TestSQLUpdate(t *testing.T) {
 			if err != tc.ExpectedResult.err {
 				t.Errorf("Expected %v, got %v", tc.ExpectedResult, err)
 				return
+			}
+
+			if value, ok := interface{}(tc.Data).(*map[string]interface{}); ok {
+				expectedMap := tc.ExpectedResult.data.(*map[string]interface{})
+				for key, value1 := range *expectedMap {
+					value2, exists := (*value)[key]
+
+					valueInterface1 := reflect.ValueOf(value1)
+					valueInterface2 := reflect.ValueOf(value2)
+
+					if !exists || !reflect.DeepEqual(valueInterface1.Interface(), valueInterface2.Interface()) {
+						// log.Println(key, value1, value2)
+						t.Errorf("Expected userObject %+v, but got %+v ", tc.ExpectedResult.data, tc.Data)
+					}
+				}
+			} else if !reflect.DeepEqual(tc.Data, tc.ExpectedResult.data) {
+				t.Errorf("Expected userObject %+v, but got %+v", tc.ExpectedResult.data, tc.Data)
 			}
 
 		})
