@@ -35,78 +35,110 @@ func GetInstance() *cacheProcessor {
 	return instance
 }
 
-// ProcessInsertCache processes the insertion of data into the cache for composite and single indexes.
-// It generates composite indexes based on unique keys and stores data with ULID keys in the cache.
+// ProcessInsertCache is a method of the cacheProcessor type used to insert data into a cache with specified indexes.
+// It checks for the number of indexes, acquires a semaphore, and processes the data in parallel.
+// It constructs cache indexes based on the given data and indexes, and then processes these indexes.
+// If the number of unique keys in an index exceeds a certain limit, it returns an error.
+//
+// Receiver:
+//   - cp: A cacheProcessor instance responsible for processing cache operations.
+//
 // Parameters:
-//   - cache (Cache): The cache implementation to use.
-//   - indexes ([]string): List of composite indexes to create.
-//   - data (map[string]interface{}): The data to be cached.
-//   - dbName (string): The name of the database.
-//   - entityName (string): The name of the entity.
+//   - cache: The Cache interface to interact with the cache system.
+//   - indexes: A slice of strings representing the indexes to be created.
+//   - data: A map containing data to be cached.
+//   - dbName: The name of the database.
+//   - entityName: The name of the entity or collection in the database.
+//
 // Returns:
-//   - error: An error if the cache operation encounters issues.
+//   - err: An error indicating the success or failure of the cache insertion operation.
 func (cp *cacheProcessor) ProcessInsertCache(cache Cache, indexes []string, data map[string]interface{}, dbName string, entityName string) (err error) {
+	// Check if the number of indexes exceeds a limit.
 	if len(indexes) > 10 {
 		return dbfusionErrors.ErrCacheIndexesIncreased
 	}
+	// If there are no indexes, return without processing.
 	if len(indexes) == 0 {
 		return nil
 	}
+
+	// Acquire a semaphore to control concurrent cache processing.
 	cp.semaphore.Acquire(context.TODO(), 1)
 	defer cp.semaphore.Release(1)
 
+	// Create a WaitGroup to synchronize parallel processing.
 	var wg sync.WaitGroup
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
 
+		// Create a slice to store cache indexes.
 		cacheIndexes := make([]string, 0)
 
+		// Iterate through the provided indexes.
 		for _, val := range indexes {
+			// Split unique keys within each index.
 			uniqueKeys := strings.Split(val, ",")
 
+			// Check if the number of unique keys exceeds a limit.
 			if len(uniqueKeys) > 5 {
 				err = dbfusionErrors.ErrCacheUniqueKeysIncreased
 			}
 
-			index := dbName + "_" + entityName + "_" // Add dbName and entityName
+			// Construct a cache index based on dbName, entityName, and unique key values.
+			index := dbName + "_" + entityName + "_"
 			for _, key := range uniqueKeys {
-
 				if value, ok := data[key]; ok {
 					index += fmt.Sprintf("%v", value)
 					index += "_"
 				}
 			}
 
+			// Remove the trailing underscore and add the index to the slice.
 			if len(index) > 1 {
 				index = index[:len(index)-1]
 				cacheIndexes = append(cacheIndexes, index)
 			}
 		}
-		err = cp.processIndexes(cache, cacheIndexes, data)
 
+		// Process the constructed cache indexes.
+		err = cp.processIndexes(cache, cacheIndexes, data)
 	}()
 
+	// Wait for parallel processing to complete.
 	wg.Wait()
 	return err
 }
 
-// processIndexes is a helper function that takes preprocessed indexes and creates the second index and stores data in the cache.
+// processIndexes is a method of the cacheProcessor type used to process and set cache indexes and associated data.
+// It generates a unique ULID (Universally Unique Lexicographically Sortable Identifier), associates it with each index,
+// and stores the ULID in the cache. It also encodes and stores the provided data in the cache using the generated ULID.
+//
+// Receiver:
+//   - cp: A cacheProcessor instance responsible for processing cache operations.
+//
 // Parameters:
-//   - cache (Cache): The cache implementation to use.
-//   - cacheIndexes ([]string): List of composite indexes to create.
-//   - data (map[string]interface{}): The data to be cached.
+//   - cache: The Cache interface to interact with the cache system.
+//   - cacheIndexes: A slice of strings representing cache indexes.
+//   - data: A map containing data to be cached.
+//
 // Returns:
-//   - error: An error if the cache operation encounters issues.
+//   - err: An error indicating the success or failure of the cache processing operation.
 func (cp *cacheProcessor) processIndexes(cache Cache, cacheIndexes []string, data map[string]interface{}) error {
+	// Generate a unique ULID based on the current timestamp and entropy source.
 	ulid := ulid.MustNew(ulid.Timestamp(time.Now()), cp.entropy).String()
+
+	// Iterate through the provided cache indexes.
 	for _, index := range cacheIndexes {
+		// Set each cache index with the generated ULID.
 		err := cache.SetKey(index, ulid)
 		if err != nil {
 			return err
 		}
 	}
+
+	// Encode the data and store it in the cache using the generated ULID as the key.
 	encodedData, err := codec.GetInstance().Encode(data)
 	if err != nil {
 		return err
@@ -116,58 +148,89 @@ func (cp *cacheProcessor) processIndexes(cache Cache, cacheIndexes []string, dat
 		return err
 	}
 
+	// Return nil to indicate successful cache processing.
 	return nil
 }
 
-// ProceessGetCache retrieves data from the composite index in the cache and decodes it into the provided data variable.
+// ProcessGetCache is a method of the cacheProcessor type used to retrieve cached data from the cache system.
+// It looks up the cache using the specified key, retrieves the associated data, decodes it, and populates the
+// provided 'data' interface with the decoded data. If the key or data is not found in the cache, it returns false.
+//
+// Receiver:
+//   - cp: A cacheProcessor instance responsible for processing cache operations.
+//
 // Parameters:
-//   - cache (Cache): The cache implementation to use.
-//   - key (string): The key to retrieve data from the cache.
-//   - data (interface{}): A reference to the variable where the retrieved data will be decoded.
+//   - cache: The Cache interface to interact with the cache system.
+//   - key: The key used to retrieve data from the cache.
+//   - data: An interface where the retrieved and decoded data will be populated.
+//
 // Returns:
-//   - bool: `true` if data is found and retrieved successfully; otherwise, `false`.
-//   - error: An error if the cache operation encounters issues.
+//   - found: A boolean indicating whether data was found in the cache (true) or not (false).
+//   - err: An error indicating the success or failure of the cache retrieval operation.
 func (cp *cacheProcessor) ProceessGetCache(cache Cache, key string, data interface{}) (bool, error) {
+	// Retrieve the first key associated with the specified 'key' from the cache.
 	firstKey, err := cache.GetKey(key)
 	if err != nil {
 		return false, err
 	}
 
+	// If the firstKey is not found in the cache, return false to indicate data not found.
 	if firstKey == nil {
 		return false, nil
 	}
+
+	// Retrieve the data associated with the firstKey from the cache.
 	redisData, err := cache.GetKey(string(firstKey.([]byte)))
+
+	// If the redisData is not found in the cache, return false to indicate data not found.
 	if redisData == nil {
 		return false, nil
 	}
+
 	if err != nil {
 		return false, err
 	}
+
+	// Decode the retrieved data and populate the 'data' interface with the decoded data.
 	codec.GetInstance().Decode(redisData.([]byte), data)
 
+	// Return true to indicate that data was successfully found and retrieved from the cache.
 	return true, nil
 }
 
-// ProceessGetQueryCache retrieves data from the cache using a single key and decodes it into the provided data variable.
+// ProcessGetQueryCache is a method of the cacheProcessor type used to retrieve cached query results from the cache system.
+// It looks up the cache using the specified key, retrieves the associated data, decodes it, and populates the provided
+// 'data' interface with the decoded data. If the key or data is not found in the cache, it returns false.
+//
+// Receiver:
+//   - cp: A cacheProcessor instance responsible for processing cache operations.
+//
 // Parameters:
-//   - cache (Cache): The cache implementation to use.
-//   - key (string): The key to retrieve data from the cache.
-//   - data (interface{}): A reference to the variable where the retrieved data will be decoded.
+//   - cache: The Cache interface to interact with the cache system.
+//   - key: The key used to retrieve data from the cache.
+//   - data: An interface where the retrieved and decoded data will be populated.
+//
 // Returns:
-//   - bool: `true` if data is found and retrieved successfully; otherwise, `false`.
-//   - error: An error if the cache operation encounters issues.
+//   - found: A boolean indicating whether data was found in the cache (true) or not (false).
+//   - err: An error indicating the success or failure of the cache retrieval operation.
 func (cp *cacheProcessor) ProceessGetQueryCache(cache Cache, key string, data interface{}) (bool, error) {
+	// Retrieve the data associated with the specified 'key' from the cache.
 	redisData, err := cache.GetKey(key)
 
+	// If an error occurs during cache retrieval, return the error.
 	if err != nil {
 		return false, err
 	}
 
+	// If the 'redisData' is not found in the cache, return false to indicate data not found.
 	if redisData == nil {
 		return false, nil
 	}
 
+	// Decode the retrieved data and populate the 'data' interface with the decoded data.
 	codec.GetInstance().Decode(redisData.([]byte), data)
+
+	// Return true to indicate that data was successfully found and retrieved from the cache.
 	return true, nil
 }
 
