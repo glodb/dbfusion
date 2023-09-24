@@ -32,7 +32,7 @@ func TestMongoFind(t *testing.T) {
 			Uri:    &validUri,
 			Cache:  &cache,
 		}
-	con, err := dbfusion.GetInstance().GeMongoConnection(options)
+	con, err := dbfusion.GetInstance().GetMongoConnection(options)
 
 	if err != nil {
 		t.Errorf("DBConnection failed with %v", err)

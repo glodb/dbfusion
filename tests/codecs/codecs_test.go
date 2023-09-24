@@ -10,6 +10,7 @@ import (
 var data map[string]interface{}
 var encodedJsonData []byte
 
+// init is called before the test functions and initializes the test data.
 func init() {
 	data = make(map[string]interface{})
 	data["firstName"] = "Aafaq"
@@ -18,18 +19,29 @@ func init() {
 	data["password"] = "change-me"
 }
 
+// TestJsonEncode tests the JSON encoding functionality.
 func TestJsonEncode(t *testing.T) {
 	var err error
+
+	// Encode the test data into JSON.
 	encodedJsonData, err = codec.GetInstance().Encode(data)
+
+	// Check if there was an error during encoding and report it.
 	if err != nil {
-		t.Errorf("Error in encoding json %v", err)
+		t.Errorf("Error in encoding JSON: %v", err)
 	}
 }
 
+// TestJsonDecode tests the JSON decoding functionality.
 func TestJsonDecode(t *testing.T) {
+	// Create a new instance of the UserTest struct to decode into.
 	newData := models.UserTest{}
+
+	// Decode the JSON data into the newData variable.
 	err := codec.GetInstance().Decode(encodedJsonData, &newData)
+
+	// Check if there was an error during decoding and report it.
 	if err != nil {
-		t.Errorf("Error in decoding json %v", err)
+		t.Errorf("Error in decoding JSON: %v", err)
 	}
 }

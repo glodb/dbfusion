@@ -12,24 +12,31 @@ import (
 )
 
 func TestMongoAggregatePagination(t *testing.T) {
+	// Define valid database name and URI for MongoDB connection.
 	validDBName := "testDBFusion"
 	validUri := "mongodb://localhost:27017"
+
+	// Create a Redis cache and connect to it.
 	cache := caches.RedisCache{}
 	err := cache.ConnectCache("localhost:6379")
 	if err != nil {
-		t.Errorf("Error in redis connection, occurred %v", err)
+		t.Errorf("Error in Redis connection: %v", err)
 	}
-	options :=
-		dbfusion.Options{
-			DbName: &validDBName,
-			Uri:    &validUri,
-			Cache:  &cache,
-		}
-	con, err := dbfusion.GetInstance().GeMongoConnection(options)
 
-	if err != nil {
-		t.Errorf("DBConnection failed with %v", err)
+	// Configure options for the DBFusion connection, including database name, URI, and cache.
+	options := dbfusion.Options{
+		DbName: &validDBName,
+		Uri:    &validUri,
+		Cache:  &cache,
 	}
+
+	// Get a MongoDB connection instance using DBFusion with the specified options.
+	con, err := dbfusion.GetInstance().GetMongoConnection(options)
+	if err != nil {
+		t.Errorf("DBConnection failed with error: %v", err)
+	}
+
+	// Define test cases for aggregation with pagination.
 	testCases := []struct {
 		Con            connections.MongoConnection
 		Conditions     []int
@@ -50,9 +57,14 @@ func TestMongoAggregatePagination(t *testing.T) {
 			PageNumber: 2,
 		},
 	}
+
+	// Iterate through the test cases.
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
+			// Set the MongoDB collection to operate on.
 			con.Table(tc.TableName)
+
+			// Apply aggregation stages based on test data.
 			for _, condition := range tc.Conditions {
 				switch condition {
 				case MATCH:
@@ -113,20 +125,24 @@ func TestMongoAggregatePagination(t *testing.T) {
 					con.GraphLookup(tc.TestData.graphLookup)
 				}
 			}
+
+			// Perform aggregation with pagination and capture results.
 			pageinationResults, err := con.AggregatePaginate(tc.Data, tc.PageNumber)
 
+			// Log the aggregation paginate result.
 			log.Println("Aggregation Paginate Result:", pageinationResults)
 
+			// Check if the actual error matches the expected error.
 			if err != tc.ExpectedResult.err {
-				t.Errorf("Expected %v, got %v", tc.ExpectedResult, err)
+				t.Errorf("Expected error: %v, got error: %v", tc.ExpectedResult.err, err)
 				return
 			}
 
+			// Check if the pagination returned the expected number of results.
 			if len(*tc.Data.(*[]models.UserTest)) != 10 {
-				t.Errorf("Expected %d, results in pagination but got %d", 10, len(*tc.Data.(*[]models.UserTest)))
+				t.Errorf("Expected %d results in pagination, but got %d", 10, len(*tc.Data.(*[]models.UserTest)))
 				return
 			}
-
 		})
 	}
 }

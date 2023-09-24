@@ -13,16 +13,15 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Singleton type
-type utils struct {
-}
+// utils is a singleton utility class.
+type utils struct{}
 
 var (
 	instance *utils
 	once     sync.Once
 )
 
-// GetInstance returns a single instance of the singleton
+// GetInstance returns a single instance of the singleton.
 func GetInstance() *utils {
 	once.Do(func() {
 		instance = &utils{}
@@ -30,48 +29,31 @@ func GetInstance() *utils {
 	return instance
 }
 
+// AssignData assigns a value to a variable based on its type using reflection.
+// It supports various data types such as string, int, float, bool, etc.,
+// and sets the value to the provided reflectValue.
 func (u *utils) AssignData(val interface{}, reflectValue reflect.Value) {
 	switch reflectValue.Type().String() {
 	case "string":
 		if reflectValue.CanSet() {
 			reflectValue.SetString(fmt.Sprintf("%s", *val.(*interface{})))
 		}
-	case "int":
-		fallthrough
-	case "int8":
-		fallthrough
-	case "int16":
-		fallthrough
-	case "int32":
-		fallthrough
-	case "int64":
+	case "int", "int8", "int16", "int32", "int64":
 		if reflectValue.CanSet() {
 			intVal, _ := strconv.ParseInt(fmt.Sprintf("%s", *val.(*interface{})), 10, 64)
 			reflectValue.SetInt(intVal)
 		}
-	case "uint":
-		fallthrough
-	case "uint8":
-		fallthrough
-	case "uint16":
-		fallthrough
-	case "uint32":
-		fallthrough
-	case "uint64":
+	case "uint", "uint8", "uint16", "uint32", "uint64":
 		if reflectValue.CanSet() {
 			intVal, _ := strconv.ParseUint(fmt.Sprintf("%s", *val.(*interface{})), 10, 64)
 			reflectValue.SetUint(intVal)
 		}
-	case "float32":
-		fallthrough
-	case "float64":
+	case "float32", "float64":
 		if reflectValue.CanSet() {
 			intVal, _ := strconv.ParseFloat(fmt.Sprintf("%s", *val.(*interface{})), 10)
 			reflectValue.SetFloat(intVal)
 		}
-	case "complex32":
-		fallthrough
-	case "complex64":
+	case "complex32", "complex64":
 		if reflectValue.CanSet() {
 			intVal, _ := strconv.ParseComplex(fmt.Sprintf("%s", *val.(*interface{})), 10)
 			reflectValue.SetComplex(intVal)
@@ -89,8 +71,9 @@ func (u *utils) AssignData(val interface{}, reflectValue reflect.Value) {
 	}
 }
 
+// buildSqlData constructs SQL data for a key-value pair and appends it to the provided query and values.
+// It handles cases where the key contains "IN" to build SQL IN clauses.
 func (u *utils) buildSqlData(key string, val interface{}, cacheKey *string, values *string, query *string, valuesInterface *[]interface{}) {
-
 	tempKey := key
 
 	if strings.Contains(strings.ToLower(key), " in ") || strings.Contains(strings.ToLower(key), " in") {
@@ -99,7 +82,6 @@ func (u *utils) buildSqlData(key string, val interface{}, cacheKey *string, valu
 
 	switch tempKey {
 	case "IN":
-		// log.Println(*query, key)
 		inValues := val.([]interface{})
 		*valuesInterface = append(*valuesInterface, inValues...)
 		inquery := "("
@@ -123,7 +105,6 @@ func (u *utils) buildSqlData(key string, val interface{}, cacheKey *string, valu
 		}
 		*query += fmt.Sprintf("%s %s ", key, inquery)
 	default:
-
 		if val != nil {
 			*valuesInterface = append(*valuesInterface, val)
 			if *values == "" {
@@ -143,6 +124,9 @@ func (u *utils) buildSqlData(key string, val interface{}, cacheKey *string, valu
 	}
 }
 
+// GetSqlFusionData constructs a SQL DBFusionData object based on the provided data.
+// It converts data of various types, such as QMap, DMap, or a map[string]interface{},
+// into SQL-compatible DBFusionData.
 func (u *utils) GetSqlFusionData(data interface{}) (conditions.DBFusionData, error) {
 	dbFusionData := &conditions.SqlData{}
 	valuesInterface := make([]interface{}, 0)
@@ -155,7 +139,6 @@ func (u *utils) GetSqlFusionData(data interface{}) (conditions.DBFusionData, err
 	} else if value, ok := data.(ftypes.QMap); ok {
 		for key, val := range value {
 			u.buildSqlData(key, val, &cacheKey, &values, &query, &valuesInterface)
-
 		}
 	} else if value, ok := data.(ftypes.DMap); ok {
 		for _, val := range value {
@@ -175,6 +158,8 @@ func (u *utils) GetSqlFusionData(data interface{}) (conditions.DBFusionData, err
 	return dbFusionData, nil
 }
 
+// buildMongoData constructs MongoDB data for a key-value pair and appends it to the provided query and values.
+// It also updates cacheKey and values for MongoDB data.
 func (u *utils) buildMongoData(key string, val interface{}, cacheKey *string, values *string) primitive.E {
 	if *cacheKey == "" {
 		*cacheKey += fmt.Sprintf("%s_%v", key, val)
@@ -190,6 +175,9 @@ func (u *utils) buildMongoData(key string, val interface{}, cacheKey *string, va
 	return primitive.E{Key: key, Value: val}
 }
 
+// GetMongoFusionData constructs a MongoDB DBFusionData object based on the provided data.
+// It converts data of various types, such as QMap, DMap, or a map[string]interface{},
+// into MongoDB-compatible DBFusionData.
 func (u *utils) GetMongoFusionData(data interface{}) (conditions.DBFusionData, error) {
 	dbFusionData := &conditions.MongoData{}
 	values := ""
@@ -202,7 +190,6 @@ func (u *utils) GetMongoFusionData(data interface{}) (conditions.DBFusionData, e
 		for key, val := range value {
 			singleData := u.buildMongoData(key, val, &cacheKey, &values)
 			query = append(query, singleData)
-
 		}
 	} else if value, ok := data.(ftypes.DMap); ok {
 		for _, val := range value {

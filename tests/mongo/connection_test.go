@@ -89,7 +89,7 @@ func TestMongoConnections(t *testing.T) {
 					}
 				}
 			}
-			con, err := dbfusion.GetInstance().GeMongoConnection(tc.Option)
+			con, err := dbfusion.GetInstance().GetMongoConnection(tc.Option)
 
 			if err != tc.ExpectedResult.Error {
 				t.Errorf("Expected status code %v, but got %v", tc.ExpectedResult.Error, err)
