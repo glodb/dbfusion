@@ -6,16 +6,10 @@ import (
 	"github.com/glodb/dbfusion"
 	"github.com/glodb/dbfusion/caches"
 	"github.com/glodb/dbfusion/connections"
-	"github.com/glodb/dbfusion/ftypes"
 	"github.com/glodb/dbfusion/tests/models"
 )
 
-type DeleteTestResults struct {
-	data interface{}
-	err  error
-}
-
-func TestSQLDelete(t *testing.T) {
+func TestSQLCreateTable(t *testing.T) {
 	validDBName := "dbfusion"
 	validUri := "root:change-me@tcp(localhost:3306)/dbfusion"
 	cache := caches.RedisCache{}
@@ -34,53 +28,36 @@ func TestSQLDelete(t *testing.T) {
 		t.Errorf("DBConnection failed with %v", err)
 	}
 
-	users := models.UserTest{
-		FirstName: "Zahid",
-		Email:     "aafaqzahid9@gmail.com",
-	}
 	testCases := []struct {
 		Con            connections.SQLConnection
 		Data           interface{}
-		ExpectedResult DeleteTestResults
-		Type           int
+		ExpectedResult error
+		IfExists       bool
+		TableName      string
 		Name           string
 	}{
 		{
-			Con:  con,
-			Data: &users,
-			ExpectedResult: DeleteTestResults{
-				data: nil,
-				err:  nil,
-			},
-			Type: 2,
-			Name: "Testing with user object",
+			Con:            con,
+			Data:           models.UserCreateTable{},
+			ExpectedResult: nil,
+			IfExists:       true,
+			Name:           "Create checking if exists",
 		},
 		{
-			Con:  con,
-			Data: ftypes.DMap{{Key: "firstname = ", Value: "Aafaq"}},
-			ExpectedResult: DeleteTestResults{
-				data: nil,
-				err:  nil,
-			},
-			Type: 1,
-			Name: "Testing with where",
+			Con:            con,
+			Data:           models.UserCreateTable{},
+			ExpectedResult: nil,
+			IfExists:       false,
+			Name:           "Create without checking if exists",
 		},
 	}
-
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-
 			var err error
-			if tc.Type == 1 {
-				err = con.Table("users").Where(tc.Data).DeleteOne()
-			} else if tc.Type == 2 {
-				err = con.DeleteOne(tc.Data)
-			}
-			// conNew, _ := dbfusion.GetInstance().GetConnection(options)
-			if err != tc.ExpectedResult.err {
+			con.CreateTable(tc.Data, tc.IfExists)
+			if err != tc.ExpectedResult {
 				t.Errorf("Expected %v, got %v", tc.ExpectedResult, err)
 			}
-
 		})
 	}
 }

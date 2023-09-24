@@ -69,6 +69,7 @@ func (c *connectionsFactory) getConnection(option Options, dbType ftypes.DBTypes
 	} else {
 		connection.ChangeDatabase("")
 	}
+	connection.SetPageSize(DEFAULT_PAGE_SIZE)
 
 	if connection == nil {
 		err = dbfusionErrors.ErrDBTypeNotSupported

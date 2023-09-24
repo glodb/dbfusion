@@ -39,7 +39,7 @@ func TestMongoDelete(t *testing.T) {
 
 	users := models.UserTest{
 		FirstName: "Aafaq",
-		Email:     "aafaqzahid9@gmail.com",
+		Email:     "aafaqzahid9+1@gmail.com",
 		Password:  "change-me",
 	}
 
@@ -55,8 +55,12 @@ func TestMongoDelete(t *testing.T) {
 			Con:  con,
 			Data: &users,
 			ExpectedResult: DeleteTestResults{
-				data: nil,
-				err:  nil,
+				data: &models.UserTest{
+					FirstName: "Aafaq",
+					Email:     "aafaqzahid9+1@gmail.com",
+					Password:  "change-me",
+				},
+				err: nil,
 			},
 			Type: 2,
 			Name: "Testing with user object",
@@ -65,7 +69,7 @@ func TestMongoDelete(t *testing.T) {
 			Con:  con,
 			Data: ftypes.DMap{{Key: "firstname", Value: "Aafaq"}},
 			ExpectedResult: DeleteTestResults{
-				data: nil,
+				data: ftypes.DMap{{Key: "firstname", Value: "Aafaq"}},
 				err:  nil,
 			},
 			Type: 1,
@@ -73,7 +77,7 @@ func TestMongoDelete(t *testing.T) {
 		},
 		{
 			Con:  con,
-			Data: ftypes.DMap{{Key: "firstname", Value: "Aafaq"}},
+			Data: nil,
 			ExpectedResult: DeleteTestResults{
 				data: nil,
 				err:  nil,
@@ -88,11 +92,11 @@ func TestMongoDelete(t *testing.T) {
 
 			var err error
 			if tc.Type == 1 {
-				err = con.Where(tc.Data).DeleteOne()
+				err = con.Table("users").Where(tc.Data).DeleteOne()
 			} else if tc.Type == 2 {
 				err = con.DeleteOne(tc.Data)
 			} else if tc.Type == 3 {
-				err = con.DeleteOne()
+				err = con.Table("users").DeleteOne()
 			}
 			// conNew, _ := dbfusion.GetInstance().GetConnection(options)
 			if err != tc.ExpectedResult.err {

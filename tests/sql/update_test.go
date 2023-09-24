@@ -122,7 +122,7 @@ func TestSQLUpdate(t *testing.T) {
 				case WHERE:
 					con.Where(tc.TestData.whereConditions)
 				case PROJECT:
-					con.Project(tc.TestData.projections)
+					con.Select(tc.TestData.projections)
 				case ADDTABLE:
 					con.Table(tc.TestData.tableName)
 				case GROUPBY:

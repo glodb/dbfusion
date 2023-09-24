@@ -34,3 +34,9 @@ type preUpdateReturn struct {
 	dataValue  reflect.Value
 	structType int
 }
+
+type preDeleteReturn struct {
+	entityName string
+	dataType   reflect.Type
+	dataValue  reflect.Value
+}

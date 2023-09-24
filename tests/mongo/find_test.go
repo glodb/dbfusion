@@ -58,8 +58,8 @@ func TestMongoFind(t *testing.T) {
 			ExpectedResult: FindTestResults{
 				data: &models.UserTest{
 					FirstName: "Aafaq",
-					Email:     "aafaqzahid9+1@gmail.com",
-					Password:  "change-me",
+					Email:     "aafaqzahid9@gmail.com",
+					Password:  "0f0bf2567ec111697671d2fd76af0d6c",
 					UpdatedAt: 0,
 					CreatedAt: 0,
 				},
@@ -76,7 +76,7 @@ func TestMongoFind(t *testing.T) {
 				data: &models.UserTest{
 					FirstName: "Aafaq",
 					Email:     "aafaqzahid9@gmail.com",
-					Password:  "change-me",
+					Password:  "0f0bf2567ec111697671d2fd76af0d6c",
 					UpdatedAt: 0,
 					CreatedAt: 0,
 				},
@@ -130,9 +130,9 @@ func TestMongoFind(t *testing.T) {
 			ExpectedResult: FindTestResults{
 				data: &map[string]interface{}{
 					"createdAt": int64(0),
-					"email":     "aafaqzahid9+1@gmail.com",
+					"email":     "aafaqzahid9@gmail.com",
 					"firstname": "Aafaq",
-					"password":  "change-me",
+					"password":  "0f0bf2567ec111697671d2fd76af0d6c",
 					"updatedAt": int64(0),
 					"username":  "",
 				},
@@ -161,9 +161,9 @@ func TestMongoFind(t *testing.T) {
 			ExpectedResult: FindTestResults{
 				data: &map[string]interface{}{
 					"createdAt": int64(0),
-					"email":     "aafaqzahid9+1@gmail.com",
+					"email":     "aafaqzahid9@gmail.com",
 					"firstname": "Aafaq",
-					"password":  "change-me",
+					"password":  "0f0bf2567ec111697671d2fd76af0d6c",
 					"updatedAt": int64(0),
 					"username":  "",
 				},

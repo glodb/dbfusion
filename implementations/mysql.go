@@ -2,11 +2,14 @@ package implementations
 
 import (
 	"database/sql"
+	"fmt"
+	"math"
 
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/glodb/dbfusion/conditions"
 	"github.com/glodb/dbfusion/connections"
+	"github.com/glodb/dbfusion/dbfusionErrors"
 	"github.com/glodb/dbfusion/ftypes"
 	"github.com/glodb/dbfusion/hooks"
 	"github.com/glodb/dbfusion/joins"
@@ -188,10 +191,48 @@ func (ms *MySql) DeleteOne(sliceData ...interface{}) error {
 		data = sliceData[0]
 	}
 
+	if ms.whereQuery != nil {
+		query, err := utils.GetInstance().GetSqlFusionData(ms.whereQuery)
+		if err != nil {
+			return err
+		}
+		ms.whereQuery = query
+	} else {
+		ms.whereQuery = &conditions.SqlData{}
+	}
+
+	preDeleteData, err := ms.preDelete(data)
+
+	if err != nil {
+		return err
+	}
+
 	if data != nil { //Need to delete from a struct
+		whereConditions, dataInterface, err := ms.buildMySqlDeleteData(preDeleteData.dataType, preDeleteData.dataValue)
+		selectQuery := fmt.Sprintf("SELECT * from %s LIMIT 1", preDeleteData.entityName)
+		if whereConditions != "" {
+			selectQuery = fmt.Sprintf("SELECT * from %s WHERE %s LIMIT 1", preDeleteData.entityName, whereConditions)
+		}
 
+		rows, err := ms.db.Query(selectQuery, dataInterface...)
+		if err != nil {
+			return err
+		}
+		rowsCount, err := ms.readSqlDataFromRows(rows, preDeleteData.dataType, preDeleteData.dataValue)
+
+		if rowsCount == 1 {
+			deleteQuery := ms.createDeleteQuery(preDeleteData.entityName, whereConditions, true)
+			_, err := ms.db.Query(deleteQuery, dataInterface...)
+			if err != nil {
+				return err
+			}
+		}
 	} else { //need to delete from whereClause
-
+		deleteQuery := ms.createDeleteQuery(preDeleteData.entityName, "", true)
+		_, err := ms.db.Query(deleteQuery, ms.whereQuery.(conditions.DBFusionData).GetValues().([]interface{})...)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -200,16 +241,66 @@ func (ms *MySql) DisConnect() error {
 	return ms.db.Close()
 }
 
-func (ms *MySql) Paginate(interface{}, ...queryoptions.FindOptions) {
+func (ms *MySql) Paginate(results interface{}, pageNumber int) (connections.PaginationResults, error) {
+	defer ms.refreshValues()
+	if ms.whereQuery != nil {
+		query, err := utils.GetInstance().GetSqlFusionData(ms.whereQuery)
+		if err != nil {
+			return connections.PaginationResults{}, err
+		}
+		ms.whereQuery = query
+	} else {
+		ms.whereQuery = &conditions.SqlData{}
+	}
+	var paginationResults connections.PaginationResults
+	countQuery := ms.createCountQuery(ms.tableName)
 
+	var count int64
+	row, err := ms.db.Query(countQuery)
+	if err != nil {
+		return paginationResults, err
+	}
+
+	countQueryRows := 0
+	for row.Next() {
+		countQueryRows++
+		err = row.Scan(&count)
+	}
+
+	if err != nil {
+		return paginationResults, err
+	}
+
+	if countQueryRows == 0 {
+		return paginationResults, dbfusionErrors.ErrNoRecordFound
+	}
+
+	paginationResults.TotalDocuments = count
+	paginationResults.TotalPages = int64(math.Ceil((float64(count) / float64(ms.pageSize))))
+	paginationResults.Limit = int64(ms.pageSize)
+	paginationResults.CurrentPage = int64(pageNumber)
+
+	ms.limit = int64(ms.pageSize)
+	ms.skip = int64(pageNumber * ms.pageSize)
+	findQuery := ms.createFindQuery(ms.tableName, false)
+	rows, err := ms.db.Query(findQuery)
+
+	if err != nil {
+		return paginationResults, err
+	}
+	ms.readSqlRowsToArray(rows, results)
+
+	return paginationResults, nil
 }
 
-// New method to create a table.
-func (ms *MySql) CreateTable(ifNotExist bool) {
-
+func (ms *MySql) CreateTable(data interface{}, ifNotExist bool) error {
+	query, err := ms.createTableQuery(data, ifNotExist)
+	if err != nil {
+		return err
+	}
+	_, err = ms.db.Exec(query)
+	return err
 }
-
-func (ms *MySql) RegisterSchema() {}
 
 // New methods for bulk operations.
 func (ms *MySql) CreateMany([]interface{}) {
@@ -232,7 +323,7 @@ func (ms *MySql) Limit(limit int64) connections.SQLConnection {
 	ms.limit = limit
 	return ms
 }
-func (ms *MySql) Project(keys map[string]bool) connections.SQLConnection {
+func (ms *MySql) Select(keys map[string]bool) connections.SQLConnection {
 	selectionKeys := make([]string, 0)
 
 	for key, val := range keys {
@@ -311,3 +402,7 @@ func (ms *MySql) Having(data interface{}) connections.SQLConnection {
 	return ms
 }
 func (ms *MySql) ExecuteSQL(sql string, args ...interface{}) error { return nil }
+
+func (ms *MySql) SetPageSize(limit int) {
+	ms.pageSize = limit
+}

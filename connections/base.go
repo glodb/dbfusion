@@ -7,5 +7,4 @@ import (
 type base interface {
 	ChangeDatabase(dbName string) error
 	SetCache(*caches.Cache)
-	CreateTable(ifNotExist bool)
 }

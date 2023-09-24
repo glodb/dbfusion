@@ -30,6 +30,7 @@ type DBCommon struct {
 	havingString string
 	havingValues []interface{}
 	orderBy      string
+	pageSize     int
 }
 
 func (dbc *DBCommon) SetCache(cache *caches.Cache) {
@@ -350,37 +351,38 @@ func (dbc *DBCommon) postFind(cache *caches.Cache, result interface{}, entityNam
 	return nil
 }
 
+func (dbc *DBCommon) buildMongoData(dataType reflect.Type, dataValue reflect.Value) primitive.D {
+	queryMap := primitive.D{}
+	for i := 0; i < dataType.NumField(); i++ {
+		field := dataType.Field(i)
+
+		rawtags := strings.Split(field.Tag.Get("dbfusion"), ",")
+		tagName := rawtags[0]
+
+		if tagName == "" {
+			continue
+		}
+		value := dataValue.Field(i).Interface()
+
+		if !dbc.isFieldSet(dataValue.Field(i)) {
+			continue
+		}
+
+		singlePoint := primitive.E{Key: tagName, Value: value}
+		queryMap = append(queryMap, singlePoint)
+	}
+	return queryMap
+}
+
 func (dbc *DBCommon) buildMongoUpdate(data interface{}, nameData entityData) (interface{}, error) {
 	dataValue := nameData.dataValue
 	dataType := nameData.dataType
 
 	structType := nameData.structType
-	tagValueMap := make(map[string]interface{})
 
 	var topMap interface{}
 	if structType == 1 { //Its a structure
-		queryMap := primitive.D{}
-		for i := 0; i < dataType.NumField(); i++ {
-			field := dataType.Field(i)
-
-			if structType == 1 {
-			}
-			rawtags := strings.Split(field.Tag.Get("dbfusion"), ",")
-			tagName := rawtags[0]
-
-			if tagName == "" {
-				continue
-			}
-			value := dataValue.Field(i).Interface()
-
-			if !dbc.isFieldSet(dataValue.Field(i)) {
-				continue
-			}
-
-			singlePoint := primitive.E{Key: tagName, Value: value}
-			queryMap = append(queryMap, singlePoint)
-			tagValueMap[tagName] = value
-		}
+		queryMap := dbc.buildMongoData(dataType, dataValue)
 		topMap = primitive.D{{Key: "$set", Value: queryMap}}
 
 	} else {
@@ -406,6 +408,34 @@ func (dbc *DBCommon) buildMongoUpdate(data interface{}, nameData entityData) (in
 		}
 	}
 	return topMap, nil
+}
+
+func (dbc *DBCommon) buildMySqlDeleteData(dataType reflect.Type, dataValue reflect.Value) (string, []interface{}, error) {
+	conditions := ""
+	valuesInterface := make([]interface{}, 0)
+	for i := 0; i < dataType.NumField(); i++ {
+		field := dataType.Field(i)
+
+		rawtags := strings.Split(field.Tag.Get("dbfusion"), ",")
+		tagName := rawtags[0]
+
+		if tagName == "" {
+			continue
+		}
+		value := dataValue.Field(i).Interface()
+
+		if !dbc.isFieldSet(dataValue.Field(i)) {
+			continue
+		}
+		if conditions == "" {
+			conditions += fmt.Sprintf("%s = ?", tagName)
+		} else {
+			conditions += fmt.Sprintf(" AND %s = ?", tagName)
+		}
+		valuesInterface = append(valuesInterface, value)
+
+	}
+	return conditions, valuesInterface, nil
 }
 
 func (dbc *DBCommon) buildMySqlUpdate(data interface{}, nameData entityData) (string, []interface{}, error) {
@@ -517,19 +547,19 @@ func (dbc *DBCommon) preUpdate(data interface{}, dbType ftypes.DBTypes) (preUpda
 	return
 }
 
-func (dbc *DBCommon) preDelete(data interface{}) (preUpdateData preUpdateReturn, err error) {
+func (dbc *DBCommon) preDelete(data interface{}) (preDeleteData preDeleteReturn, err error) {
 
-	if data == nil {
-		data = dbc.whereQuery.(conditions.DBFusionData).GetQuery()
-	}
 	if value, ok := interface{}(data).(hooks.PreUpdate); ok {
 		data = value.PreUpdate()
 	}
+	var nameData entityData
+	if data == nil {
+		nameData.entityName = dbc.tableName
+	} else {
+		nameData, err = dbc.getEntityName(data)
+	}
 
-	nameData, nameErr := dbc.getEntityName(data)
-
-	if nameErr != nil {
-		err = nameErr
+	if err != nil {
 		return
 	}
 
@@ -538,14 +568,28 @@ func (dbc *DBCommon) preDelete(data interface{}) (preUpdateData preUpdateReturn,
 		return
 	}
 
-	preUpdateData.entityName = nameData.entityName
-	preUpdateData.dataValue = nameData.dataValue
-	preUpdateData.dataType = nameData.dataType
-	preUpdateData.structType = nameData.structType
+	preDeleteData.entityName = nameData.entityName
+	preDeleteData.dataValue = nameData.dataValue
+	preDeleteData.dataType = nameData.dataType
 
 	return
 }
 
+func (dbc *DBCommon) postDelete(cache *caches.Cache, data interface{}, entityName string, results primitive.M) error {
+
+	if value, ok := interface{}(data).(hooks.CacheHook); ok {
+
+		//Builds the keys for this structure
+		oldValues := dbc.getAllCacheValues(value, results, entityName)
+
+		//Delete all the keys from cache
+		caches.GetInstance().ProceessDeleteCache(*cache, oldValues)
+	}
+	if value, ok := interface{}(data).(hooks.PostDelete); ok {
+		data = value.PostDelete()
+	}
+	return nil
+}
 func (dbc *DBCommon) postUpdate(cache *caches.Cache, result interface{}, entityName string, oldValues []string, newValues []string) error {
 
 	caches.GetInstance().ProceessUpdateCache(*cache, oldValues, newValues, result)

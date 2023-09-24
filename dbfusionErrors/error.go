@@ -16,4 +16,5 @@ var (
 	ErrSQLQueryTypeNotSupported = errors.New("Map or built in types are supported for query")
 	ErrSQLQueryNoRecordFound    = errors.New("No Record found in sql query")
 	ErrInvalidType              = errors.New("This type is not supported by the library yet")
+	ErrNoRecordFound            = errors.New("No record found for the query")
 )

@@ -13,11 +13,13 @@ import (
 const (
 	WHERE = iota
 	ADDTABLE
+	SETLIMIT
 )
 
 type TestData struct {
 	whereConditions interface{}
 	tableName       string
+	pageValues      int
 }
 
 func TestMongoUpdate(t *testing.T) {

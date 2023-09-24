@@ -7,7 +7,7 @@ import (
 type SQLConnection interface {
 	Connection
 	ExecuteSQL(sql string, args ...interface{}) error
-
+	CreateTable(tableType interface{}, ifNotExist bool) error
 	Where(interface{}) SQLConnection
 	Table(tableName string) SQLConnection
 	GroupBy(fieldname string) SQLConnection
@@ -15,6 +15,6 @@ type SQLConnection interface {
 	Skip(skip int64) SQLConnection
 	Limit(limit int64) SQLConnection
 	Sort(sortKey string, sortdesc ...bool) SQLConnection
-	Project(keys map[string]bool) SQLConnection
+	Select(keys map[string]bool) SQLConnection
 	Join(join joins.Join) SQLConnection
 }

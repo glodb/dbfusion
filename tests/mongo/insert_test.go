@@ -73,6 +73,30 @@ func TestMongoCreate(t *testing.T) {
 		},
 		{
 			Con:            con,
+			Data:           users,
+			ExpectedResult: nil,
+			Name:           "Create with Entity Name",
+		},
+		{
+			Con:            con,
+			Data:           users,
+			ExpectedResult: nil,
+			Name:           "Create with Entity Name, Pre and Post Insert hooks",
+		},
+		{
+			Con:            con,
+			Data:           users,
+			ExpectedResult: nil,
+			Name:           "Create with Entity Name, Post Insert hooks",
+		},
+		{
+			Con:            con,
+			Data:           users,
+			ExpectedResult: nil,
+			Name:           "Adding more tests to match delete",
+		},
+		{
+			Con:            con,
 			Data:           nonEntityUser,
 			ExpectedResult: nil,
 			Name:           "Create without Entity Name",

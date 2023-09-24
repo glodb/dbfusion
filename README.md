@@ -1,3 +1,69 @@
+DBFusion is ambitious project aimed at created centralized platform in golang that integrates with SQL and NoSQL databases.
+The main feature of DBFusion is that it adds a cache on any database.
+Currently library inculdes only redis cache internally. But developers can add cache of their own choice by implementing Cache Interface inside caches module. As cache is passed from outside this developer independence is supported.
+This library aims to be an ORM currently tested databases are mongo and mysql. This library doesn't aims to be competition to any sql or no sql driver as it inspires all the drivers just tries to be developer friendly.
+
+You can import library by running 
+go get github.com/glodb/dbfusion
+
+To integrate DBFusion into your Golang project, you can use the following import statement:
+
+```go
+import "github.com/globdb/dbfusion"
+```
+
+
+The library supports
+Built in enchanced cache support with cachehooks
+Pre and Post operations hooks
+Table name hooks which can be defined or extracted from structure name
+Built in Pagination support
+Aggregate Pagination for mongo db
+Chaining API
+
+The common functionality for all databases is cache support and hook
+
+1- Cache Support
+One of the main reason for building this package was to support cache over any database seamlessly. In this library we tried to achieve that.
+Cache can be enable in any of the golang structure by implementing the hook. 
+
+Consider the following structure
+
+```go
+type UserTest struct {
+	FirstName string `dbfusion:"firstname"`
+	Email     string `dbfusion:"email"`
+	Username  string `dbfusion:"username"`
+	Password  string `dbfusion:"password"`
+	CreatedAt int64  `dbfusion:"createdAt"`
+	UpdatedAt int64  `dbfusion:"updatedAt"`
+}
+```
+
+To integrate the cache implement the function GetCacheIndexes() as follows
+
+```go
+func (ne UserTest) GetCacheIndexes() []string {
+	return []string{"email", "email,password", "email,username"}
+}
+```
+
+The function returns cache indexes in form of array.
+Multiple indexes are separated by comma's. The library will create the cache indexes on the basis of provided indexes.
+The things to consider in creating cache indexes is library separates the index on database and tables but it doesn't support uniquenes in the indexes that needs to be handled by implementations.
+
+2- Hooks
+Apart from cache hooks library supports a lot of other hooks
+ - preInsert
+  - postInsert
+  - preFind
+  - postFind
+  - preUpdate
+  - postUpdate
+  - preDelete
+  - postDelete
+
+Note this 
 # DBFusion: Centralized Database Support for Golang
 
 # DBFusion
@@ -26,7 +92,6 @@ DBFusion is an ambitious project aimed at creating a centralized platform that s
   - preDelete
   - postDelete
 
-- **Custom Condition Builder**: A user-friendly custom condition builder simplifies the creation of complex queries.
 
 - **Pagination Support**: DBFusion offers pagination support for both SQL and NoSQL databases, enhancing data retrieval efficiency.
 

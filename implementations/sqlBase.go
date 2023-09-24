@@ -52,6 +52,29 @@ func (sb *SqlBase) createQuery(query ftypes.DMap) (string, []interface{}) {
 	return stringQuery, data
 }
 
+func (sb *SqlBase) createCountQuery(entityName string) string {
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", entityName)
+
+	if sb.joins != "" {
+		query = fmt.Sprintf(query+" %s", sb.joins)
+	}
+
+	if sb.whereQuery != nil {
+		whereData := sb.whereQuery.(*conditions.SqlData)
+		if whereData.GetQuery().(string) != "" {
+			query = fmt.Sprintf(query+" WHERE %v", whereData.GetQuery())
+		}
+	}
+
+	if sb.groupBy != "" {
+		query = fmt.Sprintf(query+" GROUP BY %s", sb.groupBy)
+		if sb.havingString != "" {
+			query = fmt.Sprintf(query+" HAVING %s", sb.havingString)
+		}
+	}
+
+	return query
+}
 func (sb *SqlBase) createFindQuery(entityName string, limitOne bool) string {
 	selectionKeys := "*"
 	projections := []string{}
@@ -131,6 +154,32 @@ func (sb *SqlBase) createUpdateQuery(entityName string, setCommands string, limi
 	return query
 }
 
+func (sb *SqlBase) createDeleteQuery(entityName string, whereConditions string, limitOne bool) string {
+	query := fmt.Sprintf("DELETE FROM %s", entityName)
+
+	if sb.joins != "" {
+		query = fmt.Sprintf(query+" %s", sb.joins)
+	}
+
+	if whereConditions != "" {
+		query = fmt.Sprintf(query+" WHERE %s", whereConditions)
+	} else if sb.whereQuery != nil {
+		whereData := sb.whereQuery.(*conditions.SqlData)
+		if whereData.GetQuery().(string) != "" {
+			query = fmt.Sprintf(query+" WHERE %v", whereData.GetQuery())
+		}
+	}
+
+	if !limitOne {
+		if sb.limit != 0 {
+			query = fmt.Sprintf(query+" LIMIT %d", sb.limit)
+		}
+	} else {
+		query = fmt.Sprintf(query+" LIMIT %d", 1)
+	}
+	return query
+}
+
 func (sb *SqlBase) readSqlDataFromRows(rows *sql.Rows, dataType reflect.Type, dataValue reflect.Value) (int, error) {
 
 	rowsCount := 0
@@ -182,4 +231,106 @@ func (sb *SqlBase) readSqlDataFromRows(rows *sql.Rows, dataType reflect.Type, da
 		return 0, err
 	}
 	return rowsCount, nil
+}
+
+func (sb *SqlBase) readSqlRowsToArray(rows *sql.Rows, results interface{}) error {
+	// Create a new slice of the same type as results (e.g., &[]Users{})
+	resultSliceType := reflect.TypeOf(results).Elem()
+	newSlice := reflect.New(resultSliceType).Elem()
+
+	// // Get the type of elements within the slice (e.g., Users)
+	// elementType := resultSliceType.Elem()
+	// elementValue := reflect.New(elementType).Elem()
+
+	// Get the field names from struct tags
+
+	columnNames, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+
+	// Create a slice of interface{} to hold the column data
+	columnData := make([]interface{}, len(columnNames))
+	for i := range columnData {
+		var v interface{}
+		columnData[i] = &v
+	}
+
+	// log.Println(fieldNames)
+	// Iterate through rows and populate the newSlice
+	for rows.Next() {
+		// Create a new element of the slice's element type
+		elementType := resultSliceType.Elem()
+		newElement := reflect.New(elementType).Elem()
+
+		// log.Println(newElement.Field(0))
+		// Scan the row into the fields of the newElement
+		if err := rows.Scan(columnData...); err != nil {
+			return err
+		}
+		tagField := sb.getFieldNames(elementType, newElement)
+		for idx, name := range columnNames {
+			if fieldName, ok := tagField[name]; ok {
+				utils.GetInstance().AssignData(columnData[idx], newElement.FieldByName(fieldName))
+			}
+		}
+		// Append the newElement to the newSlice
+		newSlice = reflect.Append(newSlice, newElement)
+	}
+
+	// Set the populated newSlice to the results pointer
+	reflect.ValueOf(results).Elem().Set(newSlice)
+
+	return nil
+}
+
+func (sb *SqlBase) getFieldNames(structType reflect.Type, dataValue reflect.Value) map[string]string {
+	tagField := make(map[string]string)
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		rawtags := strings.Split(field.Tag.Get("dbfusion"), ",")
+		tagName := rawtags[0]
+		if tagName != "" {
+			tagField[tagName] = field.Name
+		}
+	}
+	return tagField
+}
+
+func (sb *SqlBase) createTableQuery(data interface{}, ifNotExist bool) (string, error) {
+	query := ""
+
+	name, err := sb.getEntityName(data)
+
+	if err != nil {
+		return "", err
+	}
+	if ifNotExist {
+		query = `CREATE TABLE IF NOT EXISTS ` + name.entityName + ` (`
+	} else {
+		query = `CREATE TABLE ` + name.entityName + ` (`
+	}
+
+	dataType := name.dataType
+
+	if dataType.Kind() != reflect.Struct {
+		return "", dbfusionErrors.ErrInvalidType
+	}
+
+	columns := ""
+
+	for i := 0; i < dataType.NumField(); i++ {
+		field := dataType.Field(i)
+		tags := strings.Split(field.Tag.Get("dbfusion"), ",")
+
+		if columns != "" {
+			columns += ","
+		}
+
+		columns += strings.Join(tags, " ")
+	}
+
+	query += columns + ");"
+
+	return query, nil
 }

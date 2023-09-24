@@ -75,3 +75,42 @@ type UseWithAddress struct {
 func (ne NonEntityUserTest) GetCacheIndexes() []string {
 	return []string{"email", "email,password", "email,username"}
 }
+
+type UserCreateTable struct {
+	Id        int    `dbfusion:"id,INT,AUTO_INCREMENT,PRIMARY KEY"`
+	Email     string `dbfusion:"email,VARCHAR(255),NOT NULL,UNIQUE" json:"email"`
+	Phone     string `dbfusion:"phone,VARCHAR(255),NOT NULL" json:"phone"`
+	Password  string `dbfusion:"password,VARCHAR(50),NOT NULL" json:"password,omitempty"`
+	FirstName string `dbfusion:"firstName,VARCHAR(50)" json:"firstName"`
+	LastName  string `dbfusion:"lastName,VARCHAR(50)" json:"lastName"`
+	CreatedAt int    `dbfusion:"createdAt,INT" json:"createdAt"`
+	UpdatedAt int    `dbfusion:"updatedAt,INT" json:"updatedAt"`
+}
+
+func (ne UserCreateTable) GetNormalIndexes() []string {
+	return []string{"id:1,email:1", "id:-1,phone:1"}
+}
+
+func (ne UserCreateTable) GetUniqueIndexes() []string {
+	return []string{"id:1,phone:1"}
+}
+
+func (ne UserCreateTable) GetTextIndex() string {
+	return "email"
+}
+
+func (ne UserCreateTable) Get2DIndexes() []string {
+	return []string{}
+}
+
+func (ne UserCreateTable) Get2DSpatialIndexes() []string {
+	return []string{}
+}
+
+func (ne UserCreateTable) GetHashedIndexes() []string {
+	return []string{"id"}
+}
+
+// func (ne UserCreateTable) GetSparseIndexes() []string {
+// 	return []string{"email"}
+// }

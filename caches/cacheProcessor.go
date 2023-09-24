@@ -171,24 +171,44 @@ func (cp *cacheProcessor) ProceessGetQueryCache(cache Cache, key string, data in
 	return true, nil
 }
 
-// ProceessSetQueryCache stores data in the cache using a single key.
+// ProceessSetQueryCache is a method of the cacheProcessor struct used to set data in a cache with the provided key.
+//
+// Method Signature:
+//   func (cp *cacheProcessor) ProceessSetQueryCache(cache Cache, key string, data interface{}) (bool, error)
+//
 // Parameters:
-//   - cache (Cache): The cache implementation to use.
-//   - key (string): The key to store data in the cache.
-//   - data (interface{}): The data to be stored.
+//   - cache: A Cache interface representing the cache storage where the data will be set.
+//   - key: A string representing the key under which the data will be stored in the cache.
+//   - data: An interface{} containing the data to be stored in the cache. It will be encoded before storage.
+//
 // Returns:
-//   - bool: `true` if data is stored successfully; otherwise, `false`.
-//   - error: An error if the cache operation encounters issues.
+//   - bool: A boolean indicating whether the data was successfully set in the cache (true) or not (false).
+//   - error: An error if any error occurs during data encoding or cache setting, or nil if the operation is successful.
+//
+// Description:
+// This method encodes the provided data using a codec and then sets it in the cache with the given key.
+// It returns a boolean value indicating the success of the operation (true for success, false for failure) and
+// an error if any error occurs during encoding or cache setting.
+// If the encoding of data fails, it returns false and the encountered error.
+// If the cache setting fails, it returns false and the encountered error.
+// If both encoding and setting are successful, it returns true and nil to indicate success.
+// This method is designed for storing data in a cache with error handling.
 func (cp *cacheProcessor) ProceessSetQueryCache(cache Cache, key string, data interface{}) (bool, error) {
+	// Encode the provided data using a codec instance.
 	encodedData, err := codec.GetInstance().Encode(data)
 	if err != nil {
+		// If encoding fails, return false and the encountered error.
 		return false, err
 	}
-	err = cache.SetKey(key, encodedData)
 
+	// Set the encoded data in the cache using the provided key.
+	err = cache.SetKey(key, encodedData)
 	if err != nil {
+		// If cache setting fails, return false and the encountered error.
 		return false, err
 	}
+
+	// If both encoding and setting are successful, return true to indicate success.
 	return true, nil
 }
 
@@ -245,4 +265,70 @@ func (cp *cacheProcessor) ProceessUpdateCache(cache Cache, oldKeys []string, new
 
 	// Return success and no error.
 	return false, nil
+}
+
+// ProceessDeleteCache is a method of the cacheProcessor struct used to perform a batch deletion of cache entries.
+// It takes a Cache interface and a list of oldKeys as input, where oldKeys represent the keys to be deleted from the cache.
+// Additionally, this function identifies a composite key associated with the first old key found in the cache and deletes it.
+//
+// Method Signature:
+//   func (cp *cacheProcessor) ProceessDeleteCache(cache Cache, oldKeys []string) error
+//
+// Parameters:
+//   - cp: A pointer to the cacheProcessor struct that implements this method.
+//   - cache: A Cache interface representing the cache storage where entries will be deleted.
+//   - oldKeys: A slice of strings containing the keys to be deleted from the cache.
+//
+// Returns:
+//   - error: An error if any error occurs during cache entry deletion, or nil if the operation is successful.
+//
+// Description:
+// This method starts by attempting to retrieve the firstKey associated with the first old key found in the list.
+// If the firstKey exists, it is treated as a composite key, and its value is stored in the compKey variable.
+// Then, it iterates through each old key and deletes the corresponding cache entry from the cache.
+// If any error occurs during cache entry deletion, the function returns the error immediately.
+//
+// After deleting the individual cache entries, it proceeds to delete the composite key (if it was found earlier).
+// If any error occurs during the composite key deletion, the function returns the error.
+//
+// This method is designed for batch cache management and cleanup, including the removal of associated composite keys.
+func (cp *cacheProcessor) ProceessDeleteCache(cache Cache, oldKeys []string) error {
+	// Initialize a variable to store the composite key associated with the first old key found.
+	compKey := ""
+
+	// Loop through each old key in the provided list.
+	for _, key := range oldKeys {
+		// If compKey is empty, attempt to retrieve the firstKey associated with the old key.
+		if compKey == "" {
+			// Attempt to retrieve the firstKey associated with the old key.
+			firstKey, err := cache.GetKey(key)
+			if err != nil {
+				// If an error occurs during retrieval, return the error.
+				return err
+			}
+			// If a firstKey exists, set compKey to its value.
+			if firstKey != nil {
+				compKey = string(firstKey.([]byte))
+			}
+		}
+
+		// Delete the cache entry associated with the current old key.
+		err := cache.DelKey(key)
+
+		// If an error occurs during deletion, return the error.
+		if err != nil {
+			return err
+		}
+	}
+
+	// Delete the composite key associated with the first old key found.
+	err := cache.DelKey(compKey)
+
+	// If an error occurs during deletion, return the error.
+	if err != nil {
+		return err
+	}
+
+	// Return nil to indicate successful deletion of cache entries.
+	return nil
 }

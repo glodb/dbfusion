@@ -28,6 +28,7 @@ const (
 	LIMIT
 	SKIP
 	JOIN
+	SETLIMIT
 )
 
 type SortVal struct {
@@ -45,6 +46,7 @@ type TestData struct {
 	limitValues      int
 	skipValues       int
 	joinValues       []joins.Join
+	pageValues       int
 }
 
 func TestSqlFind(t *testing.T) {
@@ -82,12 +84,12 @@ func TestSqlFind(t *testing.T) {
 			Options:    queryoptions.FindOptions{ForceDB: true},
 			ExpectedResult: FindTestResults{
 				data: &models.UserTest{
-					FirstName: "Zahid",
-					Email:     "aafaqzahid9@gmail.com",
+					FirstName: "Zahid1",
+					Email:     "aafaqzahid9+2@gmail.com",
 					Password:  "change-me",
 					Username:  "aafaqzahid",
 					UpdatedAt: 0,
-					CreatedAt: 1694159585,
+					CreatedAt: 1694159631,
 				},
 				err: nil,
 			},
@@ -103,7 +105,7 @@ func TestSqlFind(t *testing.T) {
 			Options: queryoptions.FindOptions{ForceDB: false},
 			ExpectedResult: FindTestResults{
 				data: &models.UserTest{
-					FirstName: "Zahid",
+					FirstName: "Zahid1",
 				},
 				err: nil,
 			},
@@ -402,7 +404,7 @@ func TestSqlFind(t *testing.T) {
 				case WHERE:
 					con.Where(tc.TestData.whereConditions)
 				case PROJECT:
-					con.Project(tc.TestData.projections)
+					con.Select(tc.TestData.projections)
 				case ADDTABLE:
 					con.Table(tc.TestData.tableName)
 				case GROUPBY:
