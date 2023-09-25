@@ -3,6 +3,15 @@ The main feature of DBFusion is that it adds a cache on any database.
 Currently library inculdes only redis cache internally. But developers can add cache of their own choice by implementing Cache Interface inside caches module. As cache is passed from outside this developer independence is supported.
 This library aims to be an ORM currently tested databases are mongo and mysql. This library doesn't aims to be competition to any sql or no sql driver as it inspires all the drivers just tries to be developer friendly.
 
+
+The library supports
+Built in enchanced cache support with cachehooks
+Pre and Post operations hooks
+Table name hooks which can be defined or extracted from structure name
+Built in Pagination support
+Aggregate Pagination for mongo db
+Chaining API
+
 You can import library by running 
 go get github.com/glodb/dbfusion
 
@@ -12,14 +21,69 @@ To integrate DBFusion into your Golang project, you can use the following import
 import "github.com/globdb/dbfusion"
 ```
 
+## MySql
 
-The library supports
-Built in enchanced cache support with cachehooks
-Pre and Post operations hooks
-Table name hooks which can be defined or extracted from structure name
-Built in Pagination support
-Aggregate Pagination for mongo db
-Chaining API
+### Connection
+In order to get mysql connection a valid URI and if you want to use cache A valid cache connection is required
+
+```go
+  validDBName := "your_db"
+	validUri := "username:password@tcp(dbhost:port)/dbname"
+	cache := caches.RedisCache{}
+	err := cache.ConnectCache("host:port")
+	if err != nil {
+		t.Errorf("Error in redis connection, occurred %v", err)
+	}
+	options :=
+		dbfusion.Options{
+			DbName: &validDBName,
+			Uri:    &validUri,
+			Cache:  &cache,
+		}
+	con, err := dbfusion.GetInstance().GetMySqlConnection(options)
+```
+
+The above statements will give you a valid connection to mysql database.
+
+### Create Table
+
+In order to create a table on mysql with indexing. Can be defined on the schema level.
+Consider the following schema
+
+```go
+
+type UserCreateTable struct {
+	Id        int    `dbfusion:"id,INT,AUTO_INCREMENT,PRIMARY KEY"`
+	Email     string `dbfusion:"email,omitempty,VARCHAR(255),NOT NULL,UNIQUE"`
+	Phone     string `dbfusion:"phone,VARCHAR(255),NOT NULL"`
+	Password  string `dbfusion:"password,VARCHAR(50),NOT NULL"`
+	FirstName string `dbfusion:"firstName,VARCHAR(50)"`
+	LastName  string `dbfusion:"lastName,VARCHAR(50)"`
+	CreatedAt int    `dbfusion:"createdAt,INT"`
+	UpdatedAt int    `dbfusion:"updatedAt,INT"`
+}
+```
+Struct tags defines the name of the field. To read more about struct tags read the struct tags section of the document.
+
+After defining the schema described above call the CreateTable function on the mongo connection
+
+```go
+CreateTable(dataStructure interface{}, bool IfExists)
+```
+
+Pass object of UserCreateTable and if you want to run ifExisits on My sql query.
+
+### Insert
+
+## Mongodb
+
+## Cache
+
+## Hooks
+
+## Struct Tags
+
+## Data Types
 
 The common functionality for all databases is cache support and hook
 
