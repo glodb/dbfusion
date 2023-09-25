@@ -1,54 +1,51 @@
-DBFusion is ambitious project aimed at created centralized platform in golang that integrates with SQL and NoSQL databases.
-The main feature of DBFusion is that it adds a cache on any database.
-Currently library inculdes only redis cache internally. But developers can add cache of their own choice by implementing Cache Interface inside caches module. As cache is passed from outside this developer independence is supported.
-This library aims to be an ORM currently tested databases are mongo and mysql. This library doesn't aims to be competition to any sql or no sql driver as it inspires all the drivers just tries to be developer friendly.
+# DBFusion Documentation
 
+## Overview
 
-The library supports
-Built in enchanced cache support with cachehooks
-Pre and Post operations hooks
-Table name hooks which can be defined or extracted from structure name
-Built in Pagination support
-Aggregate Pagination for mongo db
-Chaining API
+DBFusion is a comprehensive GoLang library designed to create a centralized platform that seamlessly integrates with both SQL and NoSQL databases. Its primary feature is the ability to add a cache layer to any database. While the library currently supports Redis as its internal caching mechanism, developers can integrate their preferred cache systems by implementing the Cache Interface within the caches module. DBFusion strives to be a developer-friendly ORM (Object-Relational Mapping) and has been thoroughly tested with MongoDB and MySQL. It is not intended to replace existing SQL or NoSQL drivers but rather to provide an intuitive and user-friendly alternative.
 
-You can import library by running 
-go get github.com/glodb/dbfusion
+### Features
 
-To integrate DBFusion into your Golang project, you can use the following import statement:
+- **Enhanced Cache Support**: DBFusion offers built-in cache support with cache hooks.
+- **Hooks**: Pre and post-operation hooks for customization.
+- **Table Name Hooks**: Define or extract table names from the structure.
+- **Pagination Support**: Built-in pagination and aggregate pagination for MongoDB.
+- **Chaining API**: Fluent API for constructing complex database queries.
+
+## Installation
+
+To incorporate DBFusion into your Go project, use the following import statement:
 
 ```go
 import "github.com/globdb/dbfusion"
 ```
+## MySql Integration
 
-## MySql
-
-### Connection
-In order to get mysql connection a valid URI and if you want to use cache A valid cache connection is required
+### Establishing a Connection
+To connect to a MySQL database, you need a valid URI and, if caching is required, a working cache connection. Here is how you can establish a connection:
 
 ```go
-  validDBName := "your_db"
-	validUri := "username:password@tcp(dbhost:port)/dbname"
-	cache := caches.RedisCache{}
-	err := cache.ConnectCache("host:port")
-	if err != nil {
-		t.Errorf("Error in redis connection, occurred %v", err)
-	}
-	options :=
-		dbfusion.Options{
-			DbName: &validDBName,
-			Uri:    &validUri,
-			Cache:  &cache,
-		}
-	con, err := dbfusion.GetInstance().GetMySqlConnection(options)
+validDBName := "your_db"
+validUri := "username:password@tcp(dbhost:port)/dbname"
+cache := caches.RedisCache{}
+err := cache.ConnectCache("host:port")
+if err != nil {
+  t.Errorf("Error in Redis connection: %v", err)
+}
+options :=
+  dbfusion.Options{
+    DbName: &validDBName,
+    Uri:    &validUri,
+    Cache:  &cache,
+  }
+con, err := dbfusion.GetInstance().GetMySqlConnection(options)
 ```
 
-The above statements will give you a valid connection to mysql database.
+This code snippet will give you a valid connection to your MySQL database.
 
-### Create Table
+### Creating a Table
 
-In order to create a table on mysql with indexing. Can be defined on the schema level.
-Consider the following schema
+To create a table in MySQL with indexing, you can define the schema using struct tags. Here's an example schema definition:
 
 ```go
 
@@ -63,17 +60,165 @@ type UserCreateTable struct {
 	UpdatedAt int    `dbfusion:"updatedAt,INT"`
 }
 ```
-Struct tags defines the name of the field. To read more about struct tags read the struct tags section of the document.
-
-After defining the schema described above call the CreateTable function on the mongo connection
+After defining the schema, you can create the table using the CreateTable function on the MySQL connection:
 
 ```go
 CreateTable(dataStructure interface{}, bool IfExists)
 ```
 
-Pass object of UserCreateTable and if you want to run ifExisits on My sql query.
+Simply pass an object of UserCreateTable, and set ifExists to true if you want the query to run only if the table does not exist.
 
-### Insert
+### Chaining Queries
+DBFusion supports query chaining for constructing complex database queries. You can use the following functions in a chained manner:
+
+#### Where
+
+The Where function defines the conditions that must be met to retrieve data. It has the following signature:
+```go
+Where(interface{}) SQLConnection
+```
+#### Select
+Select describes the variables to be selected by the query by default its *.
+```go
+Select(keys map[string]bool) SQLConnection
+```
+Select specifies the variables to be selected in the query (default is *). You can use it as follows:
+```go
+con.Select(map[string]bool{"firstname": true})
+```
+#### Table
+Table sets the name of the table. If the passed variable is not a struct with a name, you can specify the table name using this function:
+
+```go
+Table(tableName string) SQLConnection
+```
+#### Group By
+Use GroupBy to specify grouping by a field:
+
+```go
+GroupBy(fieldname string) SQLConnection
+```
+#### Having
+Having works similarly to Where but is used for aggregation queries: 
+```go
+Having(conditions interface{}) SQLConnection
+```
+#### Sort
+Sort is used to specify the sorting order:
+```go
+Sort(sortKey string, sortdesc ...bool) SQLConnection
+```
+Example
+In order to sort descending on lastname we can use
+```go
+con.Sort("lastname", true)
+```
+#### Skip
+Skip determines how many rows to skip:
+
+```go
+Skip(skip int64) SQLConnection
+```
+#### Limit 
+Limit specifies how many rows to return:
+
+```go
+Limit(limit int64) SQLConnection
+```
+#### Join
+Join is used for joining tables. It has the following structure:
+```go
+Join(join joins.Join) SQLConnection
+type Join struct {
+	Operator JoinType
+	TableName string
+	Condition string
+}
+```
+
+JoinType includes
+```go
+const (
+	INNER_JOIN = JoinType(1)
+	LEFT_JOIN = JoinType(2)
+	RIGHT_JOIN = JoinType(3)
+	CROSS_JOIN = JoinType(4)
+)
+```
+If we want to join user with address we need to use this
+```go
+con.Table("users").Join(Join{Operator:LEFT_JOIN, TableName:"address", Condition:"address.userId=user.id"})
+```
+
+### Inserting Data
+To insert data into the database, use the InsertOne function:
+
+```go
+InsertOne(interface{}) error
+```
+The object you pass should have DBFusion struct tags. InsertOne supports all the data types defined and supported by the library. It also creates cache keys defined by cache hooks.
+
+### Retrieving Data with Find
+The Find function is essential for retrieving data. It supports caching and options to force fetching data from the database or cache. Here's how it works:
+```go
+FindOne(interface{}, ...queryoptions.FindOptions) error
+ForceDB bool
+CacheResult bool
+```
+You can specify options in FindOptions to skip checking the cache, force results from the database, or cache the results for future queries.
+
+#### Conditions
+Conditions are supported by ftypes.DMap. You can use various conditions in your queries. Here are some examples:
+
+```go
+// Example 1: Select all records from the "users" table.
+user := models.User{}
+con.FindOne(&user)
+
+// Example 2: Select records with a WHERE condition.
+con.Where(ftypes.DMap{{Key: "firstname =", Value: "Aafaq"}}).FindOne(&user)
+
+// Example 3: Select specific keys.
+con.Where(ftypes.DMap{{Key: "firstname =", Value: "Aafaq"}}).Select(map[string]bool{"firstname": true}).FindOne(&user)
+
+// Example 4: Select with DISTINCT.
+con.Where(ftypes.DMap{{Key: "Distinct(firstname) =", Value: "Aafaq"}}).Select(map[string]bool{"firstname": true}).FindOne(&user)
+
+// Example 5: Select with multiple conditions.
+con.Where(ftypes.DMap{{"("}, {"firstname =", "Aafaq"}, {" AND lastname =", "Zahid"}, {")"}, {"OR email IN "}, []interface{}{"aafaqzahid9@gmail.com", "aafaq.zahid9@gmail.com"}}).
+  Select(map[string]bool{"firstname": true}).
+  Skip(20).
+  Limit(10).
+  Join(joins.Join{Operator: joins.INNER_JOIN, TableName: "users b", Condition: "users.firstname=b.firstname"}).
+  FindOne(&user)
+
+```
+### Update
+To update data and find one record, use the UpdateAndFindOne function:
+```go
+UpdateAndFindOne(interface{}, interface{}, bool) error
+```
+This function synchronizes the cache after the update.
+
+### Delete
+To delete one record from the database, use the DeleteOne function. If you provide a parameter, it checks if caching is implemented and deletes
+```go
+DeleteOne(...interface{}) error
+```
+### Pagination
+
+DBFusion supports pagination for retrieving large datasets. By default, the page size is set to 10, but you can customize it using the `SetPageSize` function. Pagination works similarly to the `Find` function but returns results as an array of objects. Here's how you can use it:
+
+```go
+users := make([]models.User{}, 0)
+pageNumber := 2
+con.Where(ftypes.DMap{{Key: "firstname =", Value: "Aafaq"}}).SetPageSize(15).Paginate(&users, 2)
+```
+In this example, we retrieve a page of records with a page size of 15 and page number 2. The results are stored in the users array.
+
+The SetPageSize function allows you to control the number of records per page, making it easy to manage and display large datasets.
+
+This pagination feature is useful when dealing with extensive data and ensures efficient retrieval and display of records.
 
 ## Mongodb
 
