@@ -234,8 +234,6 @@ type PaginationResults struct {
 ```
 While other data is in the provided address of the object.
 
-## Mongodb
-
 ## MongoDB Functionality in DBFusion
 
 To establish a connection with MongoDB using DBFusion, you can use the following code snippet as a reference:
