@@ -347,35 +347,34 @@ While other data is in the provided address of the object.
 
 One of the primary functionalities of MongoDB is data retrieval through aggregation pipelines. DBFusion offers extensive support for MongoDB functionality, allowing you to build powerful and flexible queries using an aggregation pipeline. Below are some of the supported MongoDB aggregation functions and their explanations:
 
-- **Match**: Specifies a `$match` stage in a MongoDB aggregation pipeline. It filters documents based on specified criteria.
-
-- **Bucket**: Specifies a `$bucket` stage, which categorizes documents into buckets based on criteria.
-
-- **BucketsAuto**: Specifies a `$bucketAuto` stage, which automatically creates buckets for documents based on criteria.
-
+- **Match**: Specifies a `$match` stage in the aggregation pipeline for filtering documents based on criteria.
+- **Bucket**: Specifies a `$bucket` stage to categorize documents into buckets based on criteria.
+- **BucketsAuto**: Specifies a `$bucketAuto` stage to automatically create buckets for documents based on criteria.
 - **AddFields**: Specifies a `$addFields` stage to add new fields to documents in the pipeline.
-
 - **GeoNear**: Specifies a `$geoNear` stage for geospatial queries, finding documents near a specified point.
-
 - **Group**: Specifies a `$group` stage to group documents by specified criteria.
-
 - **LimitAggregate**: Specifies a `$limit` stage in the aggregation pipeline to limit the number of documents returned.
-
 - **SkipAggregate**: Specifies a `$skip` stage to skip a specified number of documents in the result set.
-
 - **SortAggregate**: Specifies a `$sort` stage to sort documents in the aggregation pipeline.
+- **SortByCount**: Specifies a `$sortByCount` stage in the aggregation pipeline.
+- **Project**: Specifies a `$project` stage to specify the projected fields.
+- **Unset**: Specifies a `$unset` stage to remove fields from documents.
+- **ReplaceWith**: Specifies a `$replaceWith` stage to replace documents with a new one.
+- **Merge**: Specifies a `$merge` stage to merge documents.
+- **Out**: Specifies a `$out` stage to specify the output location.
+- **Facet**: Specifies a `$facet` stage to use aggregation pipelines for multiple categories.
+- **CollStats**: Specifies a `$collStats` stage to collect statistics about a collection.
+- **IndexStats**: Specifies a `$indexStats` stage to collect statistics about indexes.
+- **PlanCacheStats**: Specifies a `$planCacheStats` stage to collect statistics about the query plan cache.
+- **Redact**: Specifies a `$redact` stage to control access to data.
+- **ReplaceRoot**: Specifies a `$replaceRoot` stage to replace the root document.
+- **ReplaceCount**: Specifies a `$replaceCount` stage to replace the count of matching documents.
+- **Sample**: Specifies a `$sample` stage to return a random sample of documents.
+- **Set**: Specifies a `$set` stage to set values in documents.
+- **Unwind**: Specifies a `$unwind` stage to unwind arrays.
+- **Lookup**: Specifies a `$lookup` stage to perform a left outer join on documents.
+- **GraphLookup**: Specifies a `$graphLookup` stage to perform recursive graph lookup.
 
-- **Select**: Specifies the fields to include or exclude in the result set.
-
-- **Table**: Specifies the MongoDB collection (table) to query.
-
-- **Where**: Specifies filter criteria to filter documents in the MongoDB collection.
-
-- **Skip**: Specifies the number of documents to skip in the result set.
-
-- **Limit**: Specifies the maximum number of documents to return in the result set.
-
-- **Sort**: Specifies the sorting order of the result set based on a specified key.
 
 ### Chaining Aggregation Functions
 
@@ -627,6 +626,23 @@ DMap ensures that the order of fields in your document is preserved, which can b
 These types help streamline your database-related code by providing clear and concise ways to work with maps and objects, simplifying the process of constructing and managing data for your queries.
 
 
+## Contributing
+We welcome contributions to improve the DBFusion library. To contribute, please follow these steps:
 
+Test the library and post issues.
+Fork the repository on GitHub.
+Clone your forked repository to your local machine.
+Make your changes and test them thoroughly.
+Commit your changes with clear commit messages.
+Push your changes to your forked repository.
+Create a pull request on the main repository.
+We appreciate your contributions!
+
+## Contact
+If you have questions, suggestions, or need assistance with DBFusion, you can contact us:
+
+Email: aafaqzahid9@gmail.com
+GitHub Issues: https://github.com/glodb/dbfusion/issues
+Feel free to reach out to us with any inquiries or feedback. We're here to help!
 
 
